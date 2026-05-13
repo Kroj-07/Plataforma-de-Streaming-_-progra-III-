@@ -1,26 +1,30 @@
 #include "TagIndex.h"
 #include <sstream>
 #include <algorithm>
+#include <cctype>
 
-// Función auxiliar para limpiar espacios y normalizar cada tag individual
-string limpiarTag(string s) {
-    // Eliminar espacios al inicio y al final
+using std::string;
+using std::vector;
+using std::stringstream;
+using std::getline;
+
+// Limpia y normaliza un tag individual (trim + minusculas).
+static string limpiarTag(string s) {
     s.erase(0, s.find_first_not_of(" \t\n\r"));
-    s.erase(s.find_last_not_of(" \t\n\r") + 1);
-
-    // Todo a minúsculas para que "Action" y "action" sean lo mismo
-    transform(s.begin(), s.end(), s.begin(), ::tolower);
+    if (!s.empty()) s.erase(s.find_last_not_of(" \t\n\r") + 1);
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
     return s;
 }
 
 void TagIndex::agregarPelicula(const Pelicula& p) {
-    // 1. Indexar Director (Suele ser uno solo, pero lo limpiamos)
+    // 1. Director (uno solo)
     string dir = limpiarTag(p.director);
     if (!dir.empty() && dir != "unknown") {
         indexDirector[dir].push_back(p.id);
     }
 
-    // 2. Indexar Géneros (Pueden venir como "comedy, drama")
+    // 2. Generos (CSV interno separado por comas)
     stringstream ssG(p.genero);
     string itemG;
     while (getline(ssG, itemG, ',')) {
@@ -30,7 +34,7 @@ void TagIndex::agregarPelicula(const Pelicula& p) {
         }
     }
 
-    // 3. Indexar Casting (Pueden venir como "actor 1, actor 2")
+    // 3. Casting (CSV interno separado por comas)
     stringstream ssC(p.casting);
     string itemC;
     while (getline(ssC, itemC, ',')) {
@@ -43,16 +47,8 @@ void TagIndex::agregarPelicula(const Pelicula& p) {
 
 vector<int> TagIndex::buscarPorTag(const string& tipo, const string& valor) {
     string busqueda = limpiarTag(valor);
-
-    if (tipo == "director") {
-        return indexDirector.count(busqueda) ? indexDirector[busqueda] : vector<int>();
-    }
-    else if (tipo == "genero") {
-        return indexGenero.count(busqueda) ? indexGenero[busqueda] : vector<int>();
-    }
-    else if (tipo == "casting") {
-        return indexCasting.count(busqueda) ? indexCasting[busqueda] : vector<int>();
-    }
-
+    if      (tipo == "director") return indexDirector.count(busqueda) ? indexDirector[busqueda] : vector<int>();
+    else if (tipo == "genero")   return indexGenero.count(busqueda)   ? indexGenero[busqueda]   : vector<int>();
+    else if (tipo == "casting")  return indexCasting.count(busqueda)  ? indexCasting[busqueda]  : vector<int>();
     return vector<int>();
 }

@@ -1,11 +1,14 @@
 #include "CSVReader.h"
+#include "../core/Normalizador.h"
+#include <fstream>
+#include <iostream>
 #include <algorithm>
 
-string normalizar(string texto) {
-    transform(texto.begin(), texto.end(), texto.begin(), ::tolower);
-    // Aquí podrías añadir lógica para quitar tildes si lo deseas
-    return texto;
-}
+using std::string;
+using std::vector;
+using std::stringstream;
+using std::ifstream;
+using std::getline;
 
 string CSVReader::leerCeldaCSV(stringstream& ss) {
     string celda;
@@ -14,43 +17,38 @@ string CSVReader::leerCeldaCSV(stringstream& ss) {
     if (!(ss >> c)) return "";
 
     if (c == '"') {
-        // Caso A: La celda está entre comillas (contiene comas o saltos)
-        bool escapado = false;
+        // Caso A: celda entre comillas (puede contener comas/saltos).
         while (ss.get(c)) {
             if (c == '"') {
-                if (ss.peek() == '"') { // Manejo de comillas dobles ""
+                if (ss.peek() == '"') {           // comilla escapada ""
                     ss.get(c);
                     celda += '"';
                 } else {
-                    escapado = true;
-                    break;
+                    break;                          // fin de celda
                 }
             } else {
                 celda += c;
             }
         }
-        // Consumir la coma después de la comilla de cierre
-        if (ss.peek() == ',') ss.get(c);
+        if (ss.peek() == ',') ss.get(c);            // consumir coma
     } else {
-        // Caso B: Celda simple sin comillas
         ss.putback(c);
         getline(ss, celda, ',');
     }
     return celda;
 }
 
-vector<Pelicula> CSVReader::cargarDatos(string rutaArchivo, TagIndex& indexer) {
+vector<Pelicula> CSVReader::cargarDatos(const string& rutaArchivo, TagIndex& indexer) {
     vector<Pelicula> peliculas;
     ifstream archivo(rutaArchivo);
     string linea;
 
     if (!archivo.is_open()) {
-        cerr << "Error: No se pudo abrir el archivo " << rutaArchivo << endl;
+        std::cerr << "[CSVReader] No se pudo abrir: " << rutaArchivo << "\n";
         return peliculas;
     }
 
-    // Omitir la primera línea (encabezados)
-    getline(archivo, linea);
+    getline(archivo, linea);  // saltar encabezados
 
     int idActual = 0;
     while (getline(archivo, linea)) {
@@ -60,26 +58,24 @@ vector<Pelicula> CSVReader::cargarDatos(string rutaArchivo, TagIndex& indexer) {
         Pelicula p;
 
         try {
-            p.id = idActual++;
-            p.anio = stoi(leerCeldaCSV(ss));      // Col A: Release Year
-            p.titulo = normalizar(leerCeldaCSV(ss)); // Col B: Title
-            leerCeldaCSV(ss);                     // Col C: Origin (Ignorar)
-            p.director = normalizar(leerCeldaCSV(ss)); // Col D: Director
-            p.casting = normalizar(leerCeldaCSV(ss));  // Col E: Cast
-            p.genero = normalizar(leerCeldaCSV(ss));   // Col F: Genre
-            leerCeldaCSV(ss);                     // Col G: Wiki Page (Ignorar)
-            p.sinopsis = leerCeldaCSV(ss);        // Col H: Plot
+            p.id = idActual;
+            p.anio     = std::stoi(leerCeldaCSV(ss));                        // A: Release Year
+            p.titulo   = Normalizador::normalizar(leerCeldaCSV(ss));         // B: Title
+            leerCeldaCSV(ss);                                                // C: Origin (ignorar)
+            p.director = Normalizador::normalizar(leerCeldaCSV(ss));         // D: Director
+            p.casting  = Normalizador::normalizar(leerCeldaCSV(ss));         // E: Cast
+            p.genero   = Normalizador::normalizar(leerCeldaCSV(ss));         // F: Genre
+            leerCeldaCSV(ss);                                                // G: Wiki Page (ignorar)
+            p.sinopsis = Normalizador::normalizar(leerCeldaCSV(ss));         // H: Plot
 
-            // Indexar tags mientras cargamos (Eficiencia)
             indexer.agregarPelicula(p);
-
             peliculas.push_back(p);
+            ++idActual;
         } catch (...) {
-
+            // Fila corrupta — saltamos sin romper la carga.
             continue;
         }
     }
 
-    archivo.close();
     return peliculas;
 }

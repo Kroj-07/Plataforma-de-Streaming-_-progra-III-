@@ -4,15 +4,16 @@
 #include "../data/Pelicula.h"
 #include <vector>
 #include <set>
-using namespace std;
 
+// Algoritmo de recomendaciones (Integrante C).
+// Recibe el conjunto de IDs likeados y la lista completa de películas;
+// devuelve hasta `cantidad` IDs recomendados, excluyendo likes previos.
 class Recommender {
 public:
-    // Generar recomendaciones basadas en películas likeadas
-    // Excluye películas ya likeadas
-    vector<int> generarRecomendaciones(set<int> likesIDs, 
-                                         vector<Pelicula>& todasLasPeliculas,
-                                         int cantidad = 5);
+    std::vector<int> generarRecomendaciones(
+        std::set<int> likesIDs,
+        std::vector<Pelicula>& todasLasPeliculas,
+        int cantidad = 5);
 };
 
 #endif

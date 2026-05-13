@@ -1,24 +1,20 @@
 #ifndef CSVREADER_H
 #define CSVREADER_H
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <vector>
 #include <string>
+#include <vector>
+#include <sstream>
 #include "Pelicula.h"
 #include "TagIndex.h"
 
-using namespace std;
-
+// Carga y procesamiento de datos (Integrante B).
 class CSVReader {
 public:
-    // Retorna un vector con todas las películas y llena el índice de tags
-    static vector<Pelicula> cargarDatos(string rutaArchivo, TagIndex& indexer);
+    // Lee el CSV limpio y construye el TagIndex en paralelo.
+    static std::vector<Pelicula> cargarDatos(const std::string& rutaArchivo, TagIndex& indexer);
 
 private:
-    // Función auxiliar para manejar celdas con comillas y comas internas
-    static string leerCeldaCSV(stringstream& ss);
+    static std::string leerCeldaCSV(std::stringstream& ss);
 };
 
 #endif
