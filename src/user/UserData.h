@@ -2,32 +2,36 @@
 #define USERDATA_H
 
 #include <set>
-#include <vector>
-using namespace std;
+#include <string>
 
+// Persistencia de datos del usuario (Integrante C).
+// Likes y "Ver más tarde" se guardan como IDs en archivos de texto.
 class UserData {
 public:
     UserData();
-    
-    // Cargar datos desde archivos
-    void cargar();
-    
-    // Guardar datos en archivos
-    void guardar();
-    
-    // Likes
+
     void darLike(int idPelicula);
     void quitarLike(int idPelicula);
-    set<int> obtenerLikes();
-    
-    // Ver más tarde
+    bool tieneLike(int idPelicula) const;
+    const std::set<int>& getLikes() const;
+
     void agregarVerMasTarde(int idPelicula);
     void quitarVerMasTarde(int idPelicula);
-    set<int> obtenerVerMasTarde();
-    
+    bool estaEnVerMasTarde(int idPelicula) const;
+    const std::set<int>& getVerMasTarde() const;
+
+    void guardar() const;
+    void cargar();
+
 private:
-    set<int> likes;
-    set<int> verMasTarde;
+    std::set<int> likes;
+    std::set<int> verMasTarde;
+
+    static const std::string ARCHIVO_LIKES;
+    static const std::string ARCHIVO_VER_MAS_TARDE;
+
+    void guardarArchivo(const std::set<int>& datos, const std::string& ruta) const;
+    void cargarArchivo(std::set<int>& datos, const std::string& ruta);
 };
 
 #endif

@@ -3,33 +3,38 @@
 
 #include <string>
 #include <set>
+#include <map>
 #include <vector>
-using namespace std;
 
+// Suffix Trie — implementación de A.
+// Almacena todos los sufijos de cada palabra para permitir búsqueda
+// por subcadena en O(k) donde k es la longitud del query.
 class Trie {
 public:
     Trie();
     ~Trie();
-    
-    // Insertar una palabra (título o sinopsis) asociada a un ID de película
-    // Inserta TODOS los sufijos para permitir búsqueda por subcadena
-    void insertarPalabra(string palabra, int idPelicula);
-    
-    // Insertar todas las palabras de un texto (título o sinopsis completa)
-    void insertarTexto(string texto, int idPelicula);
-    
-    // Buscar una subcadena en el Trie
-    // Retorna set con los IDs de películas que contienen esa subcadena
-    set<int> buscarSubcadena(string subcadena);
-    
-    // Buscar una frase completa (varias palabras)
-    // Retorna la UNION de resultados de cada palabra
-    set<int> buscarFrase(string frase);
-    
+
+    // Inserta una palabra y todos sus sufijos.  Costo: O(m^2).
+    void insertarPalabra(const std::string& palabra, int idPelicula);
+
+    // Tokeniza el texto y llama insertarPalabra por cada token.
+    void insertarTexto(const std::string& texto, int idPelicula);
+
+    // Devuelve el conjunto de IDs cuyos textos contienen la subcadena.
+    std::set<int> buscarSubcadena(const std::string& subcadena);
+
+    // Devuelve la UNIÓN de buscarSubcadena por cada palabra de la frase.
+    std::set<int> buscarFrase(const std::string& frase);
+
 private:
-    // Nodo raíz del Trie (implementación interna)
-    struct NodoTrie;
+    struct NodoTrie {
+        std::map<char, NodoTrie*> hijos;
+        std::set<int> peliculasIds;
+    };
+
     NodoTrie* raiz;
+
+    void destruirNodos(NodoTrie* nodo);
 };
 
 #endif
