@@ -14,24 +14,16 @@ public:
     Trie();
     ~Trie();
 
-    // Inserta una palabra y todos sus sufijos.  Costo: O(m^2).
-    void insertarPalabra(const std::string& palabra, int idPelicula);
+    void insertarPalabra(string palabra, int idPelicula);
 
-    // Tokeniza el texto y llama insertarPalabra por cada token.
-    void insertarTexto(const std::string& texto, int idPelicula);
+    void insertarTexto(string texto, int idPelicula);
 
-    // Devuelve el conjunto de IDs cuyos textos contienen la subcadena.
-    std::set<int> buscarSubcadena(const std::string& subcadena);
+    set<int> buscarSubcadena(string subcadena);
 
-    // Devuelve la UNIÓN de buscarSubcadena por cada palabra de la frase.
-    std::set<int> buscarFrase(const std::string& frase);
-
+    set<int> buscarFrase(string frase);
+    
 private:
-    struct NodoTrie {
-        std::map<char, NodoTrie*> hijos;
-        std::set<int> peliculasIds;
-    };
-
+    struct NodoTrie;
     NodoTrie* raiz;
 
     void destruirNodos(NodoTrie* nodo);

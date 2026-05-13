@@ -3,6 +3,7 @@
 
 #include <set>
 #include <string>
+using namespace std;
 
 // Persistencia de datos del usuario (Integrante C).
 // Likes y "Ver más tarde" se guardan como IDs en archivos de texto.
@@ -19,6 +20,15 @@ public:
     void quitarVerMasTarde(int idPelicula);
     bool estaEnVerMasTarde(int idPelicula) const;
     const std::set<int>& getVerMasTarde() const;
+    void    darLike(int idPelicula);
+    void    quitarLike(int idPelicula);
+    bool    tieneLike(int idPelicula) const;
+    const set<int>& getLikes() const;
+
+    void    agregarVerMasTarde(int idPelicula);
+    void    quitarVerMasTarde(int idPelicula);
+    bool    estaEnVerMasTarde(int idPelicula) const;
+    const set<int>& getVerMasTarde() const;
 
     void guardar() const;
     void cargar();
@@ -35,3 +45,14 @@ private:
 };
 
 #endif
+    set<int> likes;
+    set<int> verMasTarde;
+
+    static const string ARCHIVO_LIKES;
+    static const string ARCHIVO_VER_MAS_TARDE;
+
+    void guardarArchivo(const set<int>& datos, const string& ruta) const;
+    void cargarArchivo(set<int>& datos, const string& ruta);
+};
+
+#endif // USERDATA_H
