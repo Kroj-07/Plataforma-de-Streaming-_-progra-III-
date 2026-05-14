@@ -1,0 +1,19 @@
+# Ejecutables
+*.exe
+*.out
+*.o
+
+# Archivos de compilación
+*.obj
+*.pdb
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+
+# macOS
+.DS_Store
+
+# Thumbs
+Thumbs.db
