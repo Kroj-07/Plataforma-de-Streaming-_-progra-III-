@@ -1,23 +1,20 @@
 #ifndef CSVREADER_H
 #define CSVREADER_H
 
-#include "Pelicula.h"
-#include "../core/Trie.h"
-#include <vector>
 #include <string>
-using namespace std;
+#include <vector>
+#include <sstream>
+#include "Pelicula.h"
+#include "TagIndex.h"
 
+// Carga y procesamiento de datos (Integrante B).
 class CSVReader {
 public:
-    // Cargar películas desde archivo CSV
-    vector<Pelicula> cargarCSV(string rutaArchivo);
-    
-    // Cargar CSV e insertar automáticamente en el Trie
-    vector<Pelicula> cargarCSVeInsertarEnTrie(string rutaArchivo, Trie& trie);
-    
+    // Lee el CSV limpio y construye el TagIndex en paralelo.
+    static std::vector<Pelicula> cargarDatos(const std::string& rutaArchivo, TagIndex& indexer);
+
 private:
-    string normalizarTexto(string texto);
-    vector<string> tokenizar(string texto);
+    static std::string leerCeldaCSV(std::stringstream& ss);
 };
 
 #endif

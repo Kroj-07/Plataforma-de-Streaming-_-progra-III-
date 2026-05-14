@@ -2,32 +2,35 @@
 #define USERDATA_H
 
 #include <set>
-#include <vector>
+#include <string>
 using namespace std;
 
 class UserData {
 public:
     UserData();
-    
-    // Cargar datos desde archivos
-    void cargar();
-    
-    // Guardar datos en archivos
-    void guardar();
-    
-    // Likes
+
     void darLike(int idPelicula);
     void quitarLike(int idPelicula);
-    set<int> obtenerLikes();
-    
-    // Ver más tarde
+    bool tieneLike(int idPelicula) const;
+    const set<int>& getLikes() const;
+
     void agregarVerMasTarde(int idPelicula);
     void quitarVerMasTarde(int idPelicula);
-    set<int> obtenerVerMasTarde();
-    
+    bool estaEnVerMasTarde(int idPelicula) const;
+    const set<int>& getVerMasTarde() const;
+
+    void guardar() const;
+    void cargar();
+
 private:
     set<int> likes;
     set<int> verMasTarde;
+
+    static const string ARCHIVO_LIKES;
+    static const string ARCHIVO_VER_MAS_TARDE;
+
+    void guardarArchivo(const set<int>& datos, const string& ruta) const;
+    void cargarArchivo(set<int>& datos, const string& ruta);
 };
 
 #endif
