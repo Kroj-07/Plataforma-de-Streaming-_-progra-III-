@@ -1,5 +1,5 @@
 // =====================================================================
-// ALGORITMO DE RELEVANCIA - Avance Semana 8 (Integrante B)
+// ALGORITMO DE RELEVANCIA
 // Bosquejo inicial del scorer: pondera coincidencias en titulo,
 // director/casting y sinopsis con pesos jerarquicos.  La version final
 // (incluyendo BM25 o frecuencia inversa) se implementara en semanas
