@@ -6,6 +6,9 @@
 #include <map>
 #include <vector>
 
+using namespace std;
+
+
 // Suffix Trie — implementación de A.
 // Almacena todos los sufijos de cada palabra para permitir búsqueda
 // por subcadena en O(k) donde k es la longitud del query.
