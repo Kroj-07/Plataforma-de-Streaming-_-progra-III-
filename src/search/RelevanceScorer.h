@@ -1,11 +1,4 @@
-// =====================================================================
-// ALGORITMO DE RELEVANCIA
-// Bosquejo inicial del scorer: pondera coincidencias en titulo,
-// director/casting y sinopsis con pesos jerarquicos.  La version final
-// (incluyendo BM25 o frecuencia inversa) se implementara en semanas
-// posteriores, junto con la prueba de ordenamiento contra el dataset
-// completo de 34,886 peliculas.
-// =====================================================================
+
 #ifndef RELEVANCESCORER_H
 #define RELEVANCESCORER_H
 

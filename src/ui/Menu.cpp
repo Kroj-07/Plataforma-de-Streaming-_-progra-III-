@@ -99,24 +99,10 @@ void Menu::cargarDatosSimulados() {
 }
 
 // -------- Utilidades ------------------------------------------------------
-void Menu::limpiarPantalla() {
-#ifdef _WIN32
-    std::system("cls");
-#else
-    std::system("clear");
-#endif
-}
-
 void Menu::pausar() {
     cout << "\nPresione Enter para continuar...";
     cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-}
-
-void Menu::mostrarFilaPelicula(int indiceDisplay, int idPelicula) const {
-    if (idPelicula < 0 || idPelicula >= (int)peliculas.size()) return;
-    const Pelicula& p = peliculas[idPelicula];
-    cout << "  [" << indiceDisplay << "] " << p.titulo << " (" << p.anio << ")\n";
-    cout << "      Director: " << p.director << "\n\n";
+    cin.get();
 }
 
 // -------- Pantalla de Inicio ---------------------------------------------
