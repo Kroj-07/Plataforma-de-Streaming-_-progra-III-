@@ -15,7 +15,6 @@ using std::string;
 using std::vector;
 using std::set;
 
-// -------- Construccion ----------------------------------------------------
 Menu::Menu()
     : trie(),
       tagIndex(),
@@ -24,15 +23,18 @@ Menu::Menu()
       userData(),
       recommender() {
 
-    // 1. Cargar CSV real si existe; si esta vacio, usar datos simulados.
-    peliculas = CSVReader::cargarDatos("data/processed/peliculas_limpias.csv", tagIndex);
+    cout << "DEBUG: Constructor iniciado" << endl;
+    cout.flush();
+
+    peliculas = CSVReader::cargarDatos("C:\\Users\\Kiara\\UTEC\\Program III\\Proyecto\\Plataforma-de-Streaming-_-progra-III-\\data\\processed\\peliculas_limpias.csv", tagIndex);
+    cout << "DEBUG: CSV cargado" << endl;
+    cout.flush();
+    
     if (peliculas.empty()) {
         cout << "[Menu] CSV vacio o no encontrado. Usando datos simulados.\n";
         cargarDatosSimulados();
     }
 
-    // 2. Construir el Trie a partir de titulo + sinopsis + director + casting + genero.
-    //    Asi una busqueda como "nolan" o "leonardo" encuentra peliculas.
     for (const auto& p : peliculas) {
         trie.insertarTexto(p.titulo,   p.id);
         trie.insertarTexto(p.sinopsis, p.id);
@@ -44,7 +46,6 @@ Menu::Menu()
     cout << "[Menu] " << peliculas.size() << " peliculas cargadas.\n";
 }
 
-// -------- Datos simulados (Semana 8) --------------------------------------
 void Menu::cargarDatosSimulados() {
     auto add = [&](int anio, const string& titulo, const string& director,
                    const string& casting, const string& genero, const string& sinopsis) {
@@ -62,50 +63,63 @@ void Menu::cargarDatosSimulados() {
 
     add(2008, "Iron Man", "Jon Favreau", "Robert Downey Jr.",
         "accion, ciencia ficcion",
-        "Un multimillonario construye un traje blindado para enfrentar terroristas.");
+        "Un multimillonario construye un traje blindado.");
     add(2010, "Iron Man 2", "Jon Favreau", "Robert Downey Jr.",
         "accion, ciencia ficcion",
-        "Tony Stark enfrenta a Whiplash mientras lidia con su legado.");
+        "Tony Stark enfrenta a Whiplash.");
     add(2013, "Iron Man 3", "Shane Black", "Robert Downey Jr.",
         "accion, ciencia ficcion",
-        "Tony Stark enfrenta al Mandarin y debe sobrevivir sin su armadura.");
+        "Tony Stark enfrenta al Mandarin.");
     add(1997, "Titanic", "James Cameron", "Leonardo DiCaprio, Kate Winslet",
         "drama, romance",
-        "Historia de amor a bordo del barco que se hunde en el Atlantico.");
-    add(2009, "Avatar", "James Cameron", "Sam Worthington, Zoe Saldana",
+        "Historia de amor en el barco que se hunde.");
+    add(2009, "Avatar", "James Cameron", "Sam Worthington",
         "accion, ciencia ficcion",
-        "Un marine viaja a Pandora y se une al pueblo nativo Navi.");
-    add(2015, "El Principito", "Mark Osborne", "Jeff Bridges, Mackenzie Foy",
+        "Un marine viaja a Pandora.");
+    add(2015, "El Principito", "Mark Osborne", "Jeff Bridges",
         "animacion, fantasia",
-        "Un piloto cuenta la historia de un pequeno principe de otro planeta.");
+        "Un piloto conoce a un pequeno principe.");
     add(2005, "Batman Inicia", "Christopher Nolan", "Christian Bale",
         "accion, drama",
-        "Bruce Wayne viaja por el mundo y se convierte en Batman.");
+        "Bruce Wayne se convierte en Batman.");
     add(2008, "Batman: El Caballero de la Noche", "Christopher Nolan", "Christian Bale, Heath Ledger",
         "accion, drama",
-        "Batman se enfrenta al Joker en una guerra por el alma de Gotham.");
-    add(2014, "Interestelar", "Christopher Nolan", "Matthew McConaughey, Anne Hathaway",
+        "Batman enfrenta al Joker.");
+    add(2014, "Interestelar", "Christopher Nolan", "Matthew McConaughey",
         "ciencia ficcion, drama",
-        "Astronautas viajan a traves de un agujero de gusano buscando un nuevo hogar.");
+        "Astronautas buscan un nuevo hogar.");
     add(2010, "El Origen", "Christopher Nolan", "Leonardo DiCaprio",
         "accion, ciencia ficcion",
-        "Ladrones de suenos se infiltran en la mente para implantar una idea.");
+        "Ladrones de suenos implantan una idea.");
     add(1999, "Matrix", "Hermanas Wachowski", "Keanu Reeves",
         "accion, ciencia ficcion",
-        "Un hacker descubre que la realidad es una simulacion controlada por maquinas.");
+        "Un hacker descubre que la realidad es una simulacion.");
     add(1985, "Volver al Futuro", "Robert Zemeckis", "Michael J. Fox",
         "aventura, ciencia ficcion",
-        "Un joven viaja en el tiempo en un auto modificado por un cientifico excentrico.");
+        "Un joven viaja en el tiempo.");
 }
 
-// -------- Utilidades ------------------------------------------------------
+void Menu::limpiarPantalla() {
+#ifdef _WIN32
+    std::system("cls");
+#else
+    std::system("clear");
+#endif
+}
+
 void Menu::pausar() {
     cout << "\nPresione Enter para continuar...";
-    cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    cin.get();
     cin.get();
 }
 
-// -------- Pantalla de Inicio ---------------------------------------------
+void Menu::mostrarFilaPelicula(int indiceDisplay, int idPelicula) const {
+    if (idPelicula < 0 || idPelicula >= (int)peliculas.size()) return;
+    const Pelicula& p = peliculas[idPelicula];
+    cout << "  [" << indiceDisplay << "] " << p.titulo << " (" << p.anio << ")\n";
+    cout << "      Director: " << p.director << "\n\n";
+}
+
 void Menu::pantallaInicio() {
     limpiarPantalla();
     cout << "+------------------------------------------+\n";
@@ -142,14 +156,14 @@ void Menu::pantallaInicio() {
     }
 
     cout << "\n------------------------------------------\n";
-    cout << "  [1] Buscar\n";
-    cout << "  [2] Ver mas tarde (completo)\n";
-    cout << "  [3] Recomendaciones (completo)\n";
+    cout << "  [1] Buscar pelicula\n";
+    cout << "  [2] Ver mas tarde\n";
+    cout << "  [3] Ver recomendaciones\n";
     cout << "  [0] Salir\n";
-    cout << "Seleccione: ";
+    cout << "------------------------------------------\n";
+    cout << "Seleccione una opcion: ";
 }
 
-// -------- Busqueda --------------------------------------------------------
 void Menu::menuBuscar() {
     limpiarPantalla();
     cout << "==========================================\n";
@@ -213,7 +227,6 @@ void Menu::menuBuscar() {
     } while (nav != 'V' && nav != 'v');
 }
 
-// -------- Detalle ---------------------------------------------------------
 void Menu::mostrarDetallePelicula(int id) {
     if (id < 0 || id >= (int)peliculas.size()) {
         cout << "Pelicula no encontrada.\n";
@@ -262,7 +275,6 @@ void Menu::mostrarDetallePelicula(int id) {
     pausar();
 }
 
-// -------- Ver mas tarde (pantalla completa) ------------------------------
 void Menu::menuVerMasTarde() {
     limpiarPantalla();
     cout << "==========================================\n";
@@ -271,7 +283,7 @@ void Menu::menuVerMasTarde() {
 
     const auto& vmt = userData.getVerMasTarde();
     if (vmt.empty()) {
-        cout << "No tienes peliculas guardadas en 'Ver mas tarde'.\n";
+        cout << "No tienes peliculas guardadas.\n";
         pausar();
         return;
     }
@@ -293,10 +305,9 @@ void Menu::menuVerMasTarde() {
         if (indice >= 1 && indice <= (int)ids.size()) {
             mostrarDetallePelicula(ids[indice - 1]);
         }
-    } catch (...) { /* entrada invalida, volver */ }
+    } catch (...) {}
 }
 
-// -------- Recomendaciones (pantalla completa) -----------------------------
 void Menu::menuRecomendaciones() {
     limpiarPantalla();
     cout << "==========================================\n";
@@ -306,14 +317,14 @@ void Menu::menuRecomendaciones() {
 
     if (userData.getLikes().empty()) {
         cout << "Aun no has dado like a ninguna pelicula.\n";
-        cout << "Busca peliculas y dales like para recibir recomendaciones.\n";
+        cout << "Busca peliculas y dales like.\n";
         pausar();
         return;
     }
 
     auto recs = recommender.generarRecomendaciones(userData.getLikes(), peliculas, 5);
     if (recs.empty()) {
-        cout << "No hay recomendaciones disponibles aun.\n";
+        cout << "No hay recomendaciones disponibles.\n";
         pausar();
         return;
     }
@@ -334,10 +345,9 @@ void Menu::menuRecomendaciones() {
         if (indice >= 1 && indice <= (int)recs.size()) {
             mostrarDetallePelicula(recs[indice - 1]);
         }
-    } catch (...) { /* entrada invalida */ }
+    } catch (...) {}
 }
 
-// -------- Bucle principal ------------------------------------------------
 void Menu::iniciar() {
     string opcion;
     do {
