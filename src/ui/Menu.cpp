@@ -26,7 +26,7 @@ Menu::Menu()
     cout << "DEBUG: Constructor iniciado" << endl;
     cout.flush();
 
-    peliculas = CSVReader::cargarDatos("C:\\Users\\Kiara\\UTEC\\Program III\\Proyecto\\Plataforma-de-Streaming-_-progra-III-\\data\\processed\\peliculas_limpias.csv", tagIndex);
+    peliculas = CSVReader::cargarDatos("data/processed/peliculas_limpias.csv", tagIndex);
     cout << "DEBUG: CSV cargado" << endl;
     cout.flush();
     
@@ -35,12 +35,23 @@ Menu::Menu()
         cargarDatosSimulados();
     }
 
+    cout << "[Menu] Indexando " << peliculas.size() << " peliculas en el Trie...\n";
+    cout.flush();
+
+    size_t i = 0;
     for (const auto& p : peliculas) {
         trie.insertarTexto(p.titulo,   p.id);
-        trie.insertarTexto(p.sinopsis, p.id);
         trie.insertarTexto(p.director, p.id);
         trie.insertarTexto(p.casting,  p.id);
         trie.insertarTexto(p.genero,   p.id);
+        // Sinopsis truncada: el suffix trie con sinopsis completas (35K filas)
+        // es O(n^2) por palabra y agota tiempo/memoria.
+        trie.insertarTexto(p.sinopsis.substr(0, 120), p.id);
+
+        if (++i % 2000 == 0) {
+            cout << "  " << i << " / " << peliculas.size() << "\n";
+            cout.flush();
+        }
     }
 
     cout << "[Menu] " << peliculas.size() << " peliculas cargadas.\n";
@@ -100,11 +111,10 @@ void Menu::cargarDatosSimulados() {
 }
 
 void Menu::limpiarPantalla() {
-#ifdef _WIN32
-    std::system("cls");
-#else
-    std::system("clear");
-#endif
+    // La ventana Run de CLion no soporta ni system("cls") ni ANSI escape.
+    // Imprimimos un separador visual; la pantalla anterior queda visible
+    // arriba (util para contexto) y la nueva queda claramente demarcada.
+    cout << "\n\n==========================================\n\n";
 }
 
 void Menu::pausar() {

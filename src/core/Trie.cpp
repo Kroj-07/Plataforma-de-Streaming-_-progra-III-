@@ -3,7 +3,7 @@
 #include <algorithm>
 
 struct Trie::NodoTrie {
-    map<char, NodoTrie*> hijos;
+    unordered_map<char, NodoTrie*> hijos;
     set<int> peliculasIds;
     NodoTrie() {}
 };
