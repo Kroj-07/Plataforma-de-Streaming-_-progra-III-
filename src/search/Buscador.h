@@ -10,7 +10,7 @@
 
 class Buscador {
 public:
-    Buscador(Trie& t, TagIndex& tx, const std::vector<Pelicula>& peliculas);
+    Buscador(Trie& t, TagIndex& tx, Repository<Pelicula>& repo);
     
     std::set<int> buscarTexto(const std::string& consulta);
     std::set<int> buscarTag(const std::string& tipo, const std::string& valor);
@@ -19,7 +19,7 @@ public:
 private:
     Trie& trie;
     TagIndex& tagIndex;
-    const std::vector<Pelicula>& peliculas;
+    Repository<Pelicula>& repo;
 };
 
 #endif

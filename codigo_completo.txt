@@ -1,0 +1,1286 @@
+
+
+==================== ./CMakeLists.txt ====================
+
+cmake_minimum_required(VERSION 3.10)
+project(Plataforma-de-Streaming)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include_directories(
+        .
+        src/core
+        src/data
+        src/search
+        src/user
+        src/ui
+)
+
+add_executable(streaming_app
+        main.cpp
+        src/core/Trie.cpp
+        src/data/CSVReader.cpp
+        src/data/TagIndex.cpp
+        src/search/Buscador.cpp
+        src/ui/Menu.cpp
+        src/ui/Paginador.cpp
+        src/user/Recommender.cpp
+        src/user/UserData.cpp
+)
+
+# Carpeta donde UserData persiste likes / ver-mas-tarde.
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/user_data)
+
+# Copia automatica del CSV al directorio de build, asi el ejecutable
+# encuentra "data/processed/peliculas_limpias.csv" con ruta relativa
+# sin importar si CLion lanza desde cmake-build-debug o desde el root.
+file(COPY ${CMAKE_SOURCE_DIR}/data DESTINATION ${CMAKE_BINARY_DIR})
+
+
+==================== ./codigo_completo.txt ====================
+
+
+
+==================== ./main.cpp ====================
+
+#include "src/ui/Menu.h"
+
+int main() {
+    Menu menu;
+    menu.iniciar();
+    return 0;
+}
+
+==================== ./proyecto_completo.txt ====================
+
+
+
+==================== ./README.md ====================
+
+# Plataforma de Streaming - Programacion III (UTEC)
+
+Proyecto final del curso. Sistema de busqueda y recomendacion de peliculas
+implementado en C++20 con un Suffix Trie como estructura principal.
+
+## Menu
+
+1. **Buscar** - texto libre, busqueda por subcadena (Suffix Trie), resultados
+   ordenados por relevancia, paginacion de 5 en 5.
+2. **Ver mas tarde** - lista persistente de peliculas guardadas.
+3. **Recomendaciones** - basadas en likes (overlap de genero + director).
+4. **Salir** - guarda likes y "ver mas tarde" en `user_data/`.
+
+## Avance Semana 8
+
+Esta entrega incluye:
+
+- Codigo C++ compilable (todos los modulos cierran sus stubs).
+- Pseudocodigos de insercion y busqueda en `docs/`.
+- Manual de usuario y diagrama de navegacion.
+- Pre-procesamiento del CSV.
+
+
+==================== ./src/core/Normalizador.h ====================
+
+#ifndef NORMALIZADOR_H
+#define NORMALIZADOR_H
+
+#include <string>
+#include <cctype>
+#include <algorithm>
+
+class Normalizador {
+public:
+    static std::string normalizar(const std::string& texto) {
+        std::string resultado;
+        for (char c : texto) {
+            if (std::isalnum(static_cast<unsigned char>(c)) || c == ' ') {
+                resultado += std::tolower(static_cast<unsigned char>(c));
+            }
+        }
+        return resultado;
+    }
+};
+
+#endif
+
+
+==================== ./src/core/Trie.cpp ====================
+
+#include "Trie.h"
+#include <sstream>
+#include <algorithm>
+
+struct Trie::NodoTrie {
+    unordered_map<char, NodoTrie*> hijos;
+    set<int> peliculasIds;
+    NodoTrie() {}
+};
+
+Trie::Trie()  { raiz = new NodoTrie(); }
+Trie::~Trie() { destruirNodos(raiz);   }
+
+void Trie::destruirNodos(NodoTrie* nodo) {
+    if (!nodo) return;
+    for (auto& par : nodo->hijos)
+        destruirNodos(par.second);
+    delete nodo;
+}
+
+void Trie::insertarPalabra(string palabra, int idPelicula) {
+    if (palabra.empty()) return;
+    for (char& c : palabra) c = tolower(c);
+
+    for (int inicio = 0; inicio < (int)palabra.size(); inicio++) {
+        NodoTrie* actual = raiz;
+        for (int i = inicio; i < (int)palabra.size(); i++) {
+            char c = palabra[i];
+            if (!actual->hijos.count(c))
+                actual->hijos[c] = new NodoTrie();
+            actual = actual->hijos[c];
+            actual->peliculasIds.insert(idPelicula);
+        }
+    }
+}
+
+void Trie::insertarTexto(string texto, int idPelicula) {
+    for (char& c : texto) c = tolower(c);
+    istringstream stream(texto);
+    string palabra;
+    while (stream >> palabra) {
+        while (!palabra.empty() && !isalnum((unsigned char)palabra.front())) palabra.erase(0,1);
+        while (!palabra.empty() && !isalnum((unsigned char)palabra.back()))  palabra.pop_back();
+        if (!palabra.empty()) insertarPalabra(palabra, idPelicula);
+    }
+}
+
+set<int> Trie::buscarSubcadena(string subcadena) {
+    if (subcadena.empty()) return {};
+    for (char& c : subcadena) c = tolower(c);
+    NodoTrie* actual = raiz;
+    for (char c : subcadena) {
+        if (!actual->hijos.count(c)) return {};
+        actual = actual->hijos[c];
+    }
+    return actual->peliculasIds;
+}
+
+set<int> Trie::buscarFrase(string frase) {
+    set<int> resultado;
+    for (char& c : frase) c = tolower(c);
+    istringstream stream(frase);
+    string palabra;
+    while (stream >> palabra) {
+        set<int> parcial = buscarSubcadena(palabra);
+        resultado.insert(parcial.begin(), parcial.end());
+    }
+    return resultado;
+}
+
+
+==================== ./src/core/Trie.h ====================
+
+#ifndef TRIE_H
+#define TRIE_H
+
+#include <string>
+#include <set>
+#include <unordered_map>
+#include <vector>
+
+using namespace std;
+
+
+// Suffix Trie — implementación de A.
+// Almacena todos los sufijos de cada palabra para permitir búsqueda
+// por subcadena en O(k) donde k es la longitud del query.
+class Trie {
+public:
+    Trie();
+    ~Trie();
+
+    void insertarPalabra(string palabra, int idPelicula);
+
+    void insertarTexto(string texto, int idPelicula);
+
+    set<int> buscarSubcadena(string subcadena);
+
+    set<int> buscarFrase(string frase);
+    
+private:
+    struct NodoTrie;
+    NodoTrie* raiz;
+
+    void destruirNodos(NodoTrie* nodo);
+};
+
+#endif
+
+
+==================== ./src/data/CSVReader.cpp ====================
+
+#include "CSVReader.h"
+#include "../core/Normalizador.h"
+#include <fstream>
+#include <iostream>
+#include <algorithm>
+
+using std::string;
+using std::vector;
+using std::stringstream;
+using std::ifstream;
+using std::getline;
+
+string CSVReader::leerCeldaCSV(stringstream& ss) {
+    string celda;
+    char c;
+
+    if (!(ss >> c)) return "";
+
+    if (c == '"') {
+        // Caso A: celda entre comillas (puede contener comas/saltos).
+        while (ss.get(c)) {
+            if (c == '"') {
+                if (ss.peek() == '"') {           // comilla escapada ""
+                    ss.get(c);
+                    celda += '"';
+                } else {
+                    break;                          // fin de celda
+                }
+            } else {
+                celda += c;
+            }
+        }
+        if (ss.peek() == ',') ss.get(c);            // consumir coma
+    } else {
+        ss.putback(c);
+        getline(ss, celda, ',');
+    }
+    return celda;
+}
+
+vector<Pelicula> CSVReader::cargarDatos(const string& rutaArchivo, TagIndex& indexer) {
+    vector<Pelicula> peliculas;
+    ifstream archivo(rutaArchivo);
+    string linea;
+
+    if (!archivo.is_open()) {
+        std::cerr << "[CSVReader] No se pudo abrir: " << rutaArchivo << "\n";
+        return peliculas;
+    }
+
+    getline(archivo, linea);  // saltar encabezados
+
+    int idActual = 0;
+    while (getline(archivo, linea)) {
+        if (linea.empty()) continue;
+
+        stringstream ss(linea);
+        Pelicula p;
+
+        try {
+            p.id = idActual;
+            p.anio     = std::stoi(leerCeldaCSV(ss));                        // A: Release Year
+            p.titulo   = Normalizador::normalizar(leerCeldaCSV(ss));         // B: Title
+            leerCeldaCSV(ss);                                                // C: Origin (ignorar)
+            p.director = Normalizador::normalizar(leerCeldaCSV(ss));         // D: Director
+            p.casting  = Normalizador::normalizar(leerCeldaCSV(ss));         // E: Cast
+            p.genero   = Normalizador::normalizar(leerCeldaCSV(ss));         // F: Genre
+            leerCeldaCSV(ss);                                                // G: Wiki Page (ignorar)
+            p.sinopsis = Normalizador::normalizar(leerCeldaCSV(ss));         // H: Plot
+
+            indexer.agregarPelicula(p);
+            peliculas.push_back(p);
+            ++idActual;
+        } catch (...) {
+            // Fila corrupta — saltamos sin romper la carga.
+            continue;
+        }
+    }
+
+    return peliculas;
+}
+
+
+==================== ./src/data/CSVReader.h ====================
+
+#ifndef CSVREADER_H
+#define CSVREADER_H
+
+#include <string>
+#include <vector>
+#include <sstream>
+#include "Pelicula.h"
+#include "TagIndex.h"
+
+// Carga y procesamiento de datos (Integrante B).
+class CSVReader {
+public:
+    // Lee el CSV limpio y construye el TagIndex en paralelo.
+    static std::vector<Pelicula> cargarDatos(const std::string& rutaArchivo, TagIndex& indexer);
+
+private:
+    static std::string leerCeldaCSV(std::stringstream& ss);
+};
+
+#endif
+
+
+==================== ./src/data/Pelicula.h ====================
+
+#ifndef PELICULA_H
+#define PELICULA_H
+
+#include <string>
+#include <vector>
+
+// Estructura canónica acordada por todos los integrantes.
+// IMPORTANTE: usar "anio" (sin ñ) para compatibilidad de encoding.
+struct Pelicula {
+    int id;                                 // 0, 1, 2... (asignado por CSVReader)
+    int anio;                               // Año de estreno
+    std::string titulo;                     // Título original
+    std::string director;                   // Director principal
+    std::string casting;                    // Lista de actores en string
+    std::string genero;                     // Géneros separados por coma
+    std::string sinopsis;                   // Plot / sinopsis larga
+    std::vector<std::string> tags;          // Tags adicionales (opcional)
+};
+
+#endif
+
+
+==================== ./src/data/RelevanceScorer.h ====================
+
+#ifndef DATA_RELEVANCESCORER_H_REDIRECT
+#define DATA_RELEVANCESCORER_H_REDIRECT
+
+// Este archivo quedó como duplicado del verdadero RelevanceScorer
+// que vive en src/search/RelevanceScorer.h.
+// Se mantiene vacío para no romper rutas relativas en el historial git.
+// NO incluir desde código nuevo — usar "../search/RelevanceScorer.h".
+
+#endif
+
+
+==================== ./src/data/TagIndex.cpp ====================
+
+#include "TagIndex.h"
+#include <sstream>
+#include <algorithm>
+#include <cctype>
+
+using std::string;
+using std::vector;
+using std::stringstream;
+using std::getline;
+
+// Limpia y normaliza un tag individual (trim + minusculas).
+static string limpiarTag(string s) {
+    s.erase(0, s.find_first_not_of(" \t\n\r"));
+    if (!s.empty()) s.erase(s.find_last_not_of(" \t\n\r") + 1);
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+    return s;
+}
+
+void TagIndex::agregarPelicula(const Pelicula& p) {
+    // 1. Director (uno solo)
+    string dir = limpiarTag(p.director);
+    if (!dir.empty() && dir != "unknown") {
+        indexDirector[dir].push_back(p.id);
+    }
+
+    // 2. Generos (CSV interno separado por comas)
+    stringstream ssG(p.genero);
+    string itemG;
+    while (getline(ssG, itemG, ',')) {
+        string gen = limpiarTag(itemG);
+        if (!gen.empty() && gen != "unknown") {
+            indexGenero[gen].push_back(p.id);
+        }
+    }
+
+    // 3. Casting (CSV interno separado por comas)
+    stringstream ssC(p.casting);
+    string itemC;
+    while (getline(ssC, itemC, ',')) {
+        string actor = limpiarTag(itemC);
+        if (!actor.empty() && actor != "unknown") {
+            indexCasting[actor].push_back(p.id);
+        }
+    }
+}
+
+vector<int> TagIndex::buscarPorTag(const string& tipo, const string& valor) {
+    string busqueda = limpiarTag(valor);
+    if      (tipo == "director") return indexDirector.count(busqueda) ? indexDirector[busqueda] : vector<int>();
+    else if (tipo == "genero")   return indexGenero.count(busqueda)   ? indexGenero[busqueda]   : vector<int>();
+    else if (tipo == "casting")  return indexCasting.count(busqueda)  ? indexCasting[busqueda]  : vector<int>();
+    return vector<int>();
+}
+
+
+==================== ./src/data/TagIndex.h ====================
+
+#ifndef TAGINDEX_H
+#define TAGINDEX_H
+
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include "Pelicula.h"
+
+// Índice por tags (Integrante B).
+// Acceso O(1) promedio por director, género o actor.
+class TagIndex {
+private:
+    std::unordered_map<std::string, std::vector<int>> indexDirector;
+    std::unordered_map<std::string, std::vector<int>> indexGenero;
+    std::unordered_map<std::string, std::vector<int>> indexCasting;
+
+public:
+    TagIndex() = default;
+
+    // Llamar durante la lectura del CSV.
+    void agregarPelicula(const Pelicula& p);
+
+    // tipo: "director" | "genero" | "casting"
+    std::vector<int> buscarPorTag(const std::string& tipo, const std::string& valor);
+
+    const std::unordered_map<std::string, std::vector<int>>& getIndexGenero() const {
+        return indexGenero;
+    }
+};
+
+#endif
+
+
+==================== ./src/search/Buscador.cpp ====================
+
+// =====================================================================
+// ORQUESTADOR DE BUSQUEDA - Avance Semana 8 (Integrante D)
+// Clase puente que conecta el Trie (B) con el TagIndex (B) y el
+// RelevanceScorer (B).  En el avance solo se expone la firma; la logica
+// de orquestacion completa (combinar texto + tags + ranking + paginacion
+// perezosa) se completara en semanas posteriores.
+// =====================================================================
+#include "Buscador.h"
+#include "RelevanceScorer.h"
+#include "../core/Normalizador.h"
+
+using std::string;
+using std::set;
+using std::vector;
+
+Buscador::Buscador(Trie& t, TagIndex& tx, const vector<Pelicula>& peliculas)
+    : trie(t), tagIndex(tx), peliculas(peliculas) {}
+
+set<int> Buscador::buscarTexto(const string& consulta) {
+    if (consulta.empty()) return {};
+    string normal = Normalizador::normalizar(consulta);
+    return trie.buscarFrase(normal);
+}
+
+set<int> Buscador::buscarTag(const string& tipo, const string& valor) {
+    auto ids = tagIndex.buscarPorTag(tipo, valor);
+    return set<int>(ids.begin(), ids.end());
+}
+
+vector<int> Buscador::buscarOrdenado(const string& consulta) {
+    auto ids = buscarTexto(consulta);
+    if (ids.empty()) return {};
+    return RelevanceScorer::ordenarPorRelevancia(ids, peliculas, Normalizador::normalizar(consulta));
+}
+
+
+==================== ./src/search/Buscador.h ====================
+
+#ifndef BUSCADOR_H
+#define BUSCADOR_H
+
+#include "../core/Trie.h"
+#include "../data/TagIndex.h"
+#include "../data/Pelicula.h"
+#include <set>
+#include <vector>
+#include <string>
+
+class Buscador {
+public:
+    Buscador(Trie& t, TagIndex& tx, const std::vector<Pelicula>& peliculas);
+    
+    std::set<int> buscarTexto(const std::string& consulta);
+    std::set<int> buscarTag(const std::string& tipo, const std::string& valor);
+    std::vector<int> buscarOrdenado(const std::string& consulta);
+
+private:
+    Trie& trie;
+    TagIndex& tagIndex;
+    const std::vector<Pelicula>& peliculas;
+};
+
+#endif
+
+
+==================== ./src/search/RelevanceScorer.cpp ====================
+
+// La implementacion completa vive inline en RelevanceScorer.h.
+// Este archivo se mantiene vacio a proposito para no romper el historial.
+
+
+==================== ./src/search/RelevanceScorer.h ====================
+
+
+#ifndef RELEVANCESCORER_H
+#define RELEVANCESCORER_H
+
+#include "../data/Pelicula.h"
+#include <vector>
+#include <set>
+#include <string>
+#include <algorithm>
+#include <sstream>
+
+// Algoritmo de relevancia (Integrante B).
+// Pondera: título > director/casting > sinopsis.  Bonus por recencia.
+class RelevanceScorer {
+public:
+    // Calcula puntaje de una película respecto a una lista de términos.
+    static int calcularPuntaje(const Pelicula& p, const std::vector<std::string>& terminos) {
+        int score = 0;
+        for (const std::string& term : terminos) {
+            if (term.empty()) continue;
+            if (p.titulo.find(term)   != std::string::npos) score += 50;
+            if (p.director.find(term) != std::string::npos) score += 30;
+            if (p.casting.find(term)  != std::string::npos) score += 30;
+
+            size_t pos = p.sinopsis.find(term, 0);
+            while (pos != std::string::npos) {
+                score += 5;
+                pos = p.sinopsis.find(term, pos + term.length());
+            }
+        }
+        score += (p.anio / 100);  // pequeño bonus por recencia
+        return score;
+    }
+
+    // Convierte una consulta libre en lista de términos (split por espacios).
+    static std::vector<std::string> tokenizar(const std::string& consulta) {
+        std::vector<std::string> terminos;
+        std::istringstream iss(consulta);
+        std::string tok;
+        while (iss >> tok) terminos.push_back(tok);
+        return terminos;
+    }
+
+    // Ordena IDs por relevancia (mayor score primero).  O(n log n).
+    static std::vector<int> ordenarPorRelevancia(
+            const std::set<int>& ids,
+            const std::vector<Pelicula>& peliculas,
+            const std::string& consulta) {
+        auto terminos = tokenizar(consulta);
+        std::vector<int> v(ids.begin(), ids.end());
+        std::sort(v.begin(), v.end(), [&](int a, int b) {
+            return calcularPuntaje(peliculas[a], terminos) >
+                   calcularPuntaje(peliculas[b], terminos);
+        });
+        return v;
+    }
+};
+
+#endif
+
+
+==================== ./src/ui/Menu.cpp ====================
+
+#include "Menu.h"
+#include "Paginador.h"
+#include "../core/Normalizador.h"
+#include "../search/RelevanceScorer.h"
+#include <iostream>
+#include <limits>
+#include <algorithm>
+#include <cstdlib>
+#include <string>
+
+using std::cout;
+using std::cin;
+using std::endl;
+using std::string;
+using std::vector;
+using std::set;
+
+Menu::Menu()
+    : trie(),
+      tagIndex(),
+      peliculas(),
+      buscador(trie, tagIndex, peliculas),
+      userData(),
+      recommender() {
+
+    cout << "DEBUG: Constructor iniciado" << endl;
+    cout.flush();
+
+    peliculas = CSVReader::cargarDatos("data/processed/peliculas_limpias.csv", tagIndex);
+    cout << "DEBUG: CSV cargado" << endl;
+    cout.flush();
+    
+    if (peliculas.empty()) {
+        cout << "[Menu] CSV vacio o no encontrado. Usando datos simulados.\n";
+        cargarDatosSimulados();
+    }
+
+    cout << "[Menu] Indexando " << peliculas.size() << " peliculas en el Trie...\n";
+    cout.flush();
+
+    size_t i = 0;
+    for (const auto& p : peliculas) {
+        trie.insertarTexto(p.titulo,   p.id);
+        trie.insertarTexto(p.director, p.id);
+        trie.insertarTexto(p.casting,  p.id);
+        trie.insertarTexto(p.genero,   p.id);
+        // Sinopsis truncada: el suffix trie con sinopsis completas (35K filas)
+        // es O(n^2) por palabra y agota tiempo/memoria.
+        trie.insertarTexto(p.sinopsis.substr(0, 120), p.id);
+
+        if (++i % 2000 == 0) {
+            cout << "  " << i << " / " << peliculas.size() << "\n";
+            cout.flush();
+        }
+    }
+
+    cout << "[Menu] " << peliculas.size() << " peliculas cargadas.\n";
+}
+
+void Menu::cargarDatosSimulados() {
+    auto add = [&](int anio, const string& titulo, const string& director,
+                   const string& casting, const string& genero, const string& sinopsis) {
+        Pelicula p;
+        p.id       = (int)peliculas.size();
+        p.anio     = anio;
+        p.titulo   = Normalizador::normalizar(titulo);
+        p.director = Normalizador::normalizar(director);
+        p.casting  = Normalizador::normalizar(casting);
+        p.genero   = Normalizador::normalizar(genero);
+        p.sinopsis = Normalizador::normalizar(sinopsis);
+        tagIndex.agregarPelicula(p);
+        peliculas.push_back(p);
+    };
+
+    add(2008, "Iron Man", "Jon Favreau", "Robert Downey Jr.",
+        "accion, ciencia ficcion",
+        "Un multimillonario construye un traje blindado.");
+    add(2010, "Iron Man 2", "Jon Favreau", "Robert Downey Jr.",
+        "accion, ciencia ficcion",
+        "Tony Stark enfrenta a Whiplash.");
+    add(2013, "Iron Man 3", "Shane Black", "Robert Downey Jr.",
+        "accion, ciencia ficcion",
+        "Tony Stark enfrenta al Mandarin.");
+    add(1997, "Titanic", "James Cameron", "Leonardo DiCaprio, Kate Winslet",
+        "drama, romance",
+        "Historia de amor en el barco que se hunde.");
+    add(2009, "Avatar", "James Cameron", "Sam Worthington",
+        "accion, ciencia ficcion",
+        "Un marine viaja a Pandora.");
+    add(2015, "El Principito", "Mark Osborne", "Jeff Bridges",
+        "animacion, fantasia",
+        "Un piloto conoce a un pequeno principe.");
+    add(2005, "Batman Inicia", "Christopher Nolan", "Christian Bale",
+        "accion, drama",
+        "Bruce Wayne se convierte en Batman.");
+    add(2008, "Batman: El Caballero de la Noche", "Christopher Nolan", "Christian Bale, Heath Ledger",
+        "accion, drama",
+        "Batman enfrenta al Joker.");
+    add(2014, "Interestelar", "Christopher Nolan", "Matthew McConaughey",
+        "ciencia ficcion, drama",
+        "Astronautas buscan un nuevo hogar.");
+    add(2010, "El Origen", "Christopher Nolan", "Leonardo DiCaprio",
+        "accion, ciencia ficcion",
+        "Ladrones de suenos implantan una idea.");
+    add(1999, "Matrix", "Hermanas Wachowski", "Keanu Reeves",
+        "accion, ciencia ficcion",
+        "Un hacker descubre que la realidad es una simulacion.");
+    add(1985, "Volver al Futuro", "Robert Zemeckis", "Michael J. Fox",
+        "aventura, ciencia ficcion",
+        "Un joven viaja en el tiempo.");
+}
+
+void Menu::limpiarPantalla() {
+    // La ventana Run de CLion no soporta ni system("cls") ni ANSI escape.
+    // Imprimimos un separador visual; la pantalla anterior queda visible
+    // arriba (util para contexto) y la nueva queda claramente demarcada.
+    cout << "\n\n==========================================\n\n";
+}
+
+void Menu::pausar() {
+    cout << "\nPresione Enter para continuar...";
+    cin.get();
+    cin.get();
+}
+
+void Menu::mostrarFilaPelicula(int indiceDisplay, int idPelicula) const {
+    if (idPelicula < 0 || idPelicula >= (int)peliculas.size()) return;
+    const Pelicula& p = peliculas[idPelicula];
+    cout << "  [" << indiceDisplay << "] " << p.titulo << " (" << p.anio << ")\n";
+    cout << "      Director: " << p.director << "\n\n";
+}
+
+void Menu::pantallaInicio() {
+    limpiarPantalla();
+    cout << "+------------------------------------------+\n";
+    cout << "|   PLATAFORMA DE STREAMING                |\n";
+    cout << "|   Proyecto Final - Programacion III      |\n";
+    cout << "+------------------------------------------+\n\n";
+
+    cout << "------------------------------------------\n";
+    cout << "  VER MAS TARDE\n";
+    cout << "------------------------------------------\n";
+    if (userData.getVerMasTarde().empty()) {
+        cout << "  (vacio) - busca peliculas y guardalas\n";
+    } else {
+        int i = 1;
+        for (int id : userData.getVerMasTarde()) {
+            mostrarFilaPelicula(i++, id);
+            if (i > 3) break;
+        }
+    }
+
+    cout << "\n------------------------------------------\n";
+    cout << "  RECOMENDACIONES PARA TI\n";
+    cout << "------------------------------------------\n";
+    if (userData.getLikes().empty()) {
+        cout << "  Da like a peliculas para ver recomendaciones\n";
+    } else {
+        auto recs = recommender.generarRecomendaciones(userData.getLikes(), peliculas, 3);
+        if (recs.empty()) {
+            cout << "  Aun no hay recomendaciones\n";
+        } else {
+            int i = 1;
+            for (int id : recs) mostrarFilaPelicula(i++, id);
+        }
+    }
+
+    cout << "\n------------------------------------------\n";
+    cout << "  [1] Buscar pelicula\n";
+    cout << "  [2] Ver mas tarde\n";
+    cout << "  [3] Ver recomendaciones\n";
+    cout << "  [0] Salir\n";
+    cout << "------------------------------------------\n";
+    cout << "Seleccione una opcion: ";
+}
+
+void Menu::menuBuscar() {
+    limpiarPantalla();
+    cout << "==========================================\n";
+    cout << "  BUSCAR PELICULA\n";
+    cout << "==========================================\n";
+    cout << "Puede buscar por palabra, frase o parte de una palabra.\n";
+    cout << "Ejemplos: 'iron', 'barco', 'bat', 'nolan'\n\n";
+    cout << "Ingrese su busqueda: ";
+
+    string consulta;
+    std::getline(cin, consulta);
+    if (consulta.empty()) return;
+
+    vector<int> resultados = buscador.buscarOrdenado(consulta);
+
+    if (resultados.empty()) {
+        cout << "\nNo se encontraron coincidencias para: \"" << consulta << "\"\n";
+        pausar();
+        return;
+    }
+
+    Paginador pag((int)resultados.size(), 5);
+    char nav = 0;
+
+    do {
+        limpiarPantalla();
+        cout << "==========================================\n";
+        cout << "  Resultados para: \"" << consulta << "\"\n";
+        cout << "==========================================\n\n";
+
+        for (int i = pag.getInicio(); i < pag.getFin(); ++i) {
+            mostrarFilaPelicula(i - pag.getInicio() + 1, resultados[i]);
+        }
+
+        cout << "------------------------------------------\n";
+        cout << "  Pagina " << pag.getPaginaActual() << " de " << pag.getTotalPaginas();
+        cout << "  (Mostrando " << (pag.getFin() - pag.getInicio())
+             << " de " << pag.getTotalResultados() << ")\n";
+        cout << "------------------------------------------\n";
+        cout << "  [1-5] Ver detalle  ";
+        if (pag.hayAnterior())  cout << "[A] Anterior  ";
+        if (pag.haySiguiente()) cout << "[S] Siguiente  ";
+        cout << "[V] Volver\n";
+        cout << "Seleccione: ";
+
+        string entrada;
+        std::getline(cin, entrada);
+        if (entrada.empty()) { nav = 0; continue; }
+        nav = entrada[0];
+
+        if (nav >= '1' && nav <= '5') {
+            int indice = pag.getInicio() + (nav - '1');
+            if (indice < pag.getTotalResultados()) {
+                mostrarDetallePelicula(resultados[indice]);
+            }
+        } else if ((nav == 'S' || nav == 's') && pag.haySiguiente()) {
+            pag.siguiente();
+        } else if ((nav == 'A' || nav == 'a') && pag.hayAnterior()) {
+            pag.anterior();
+        }
+    } while (nav != 'V' && nav != 'v');
+}
+
+void Menu::mostrarDetallePelicula(int id) {
+    if (id < 0 || id >= (int)peliculas.size()) {
+        cout << "Pelicula no encontrada.\n";
+        pausar();
+        return;
+    }
+    const Pelicula& p = peliculas[id];
+
+    limpiarPantalla();
+    cout << "==========================================\n";
+    cout << "  " << p.titulo << " (" << p.anio << ")\n";
+    cout << "==========================================\n\n";
+    cout << "Director: " << p.director << "\n";
+    cout << "Genero:   " << p.genero   << "\n";
+    cout << "Casting:  " << p.casting  << "\n\n";
+    cout << "Sinopsis:\n" << p.sinopsis << "\n\n";
+
+    bool tieneLike = userData.tieneLike(id);
+    bool enVer     = userData.estaEnVerMasTarde(id);
+    cout << "Estado:";
+    if (tieneLike) cout << " [LIKE]";
+    if (enVer)     cout << " [VER MAS TARDE]";
+    if (!tieneLike && !enVer) cout << " (sin marcas)";
+    cout << "\n\n";
+
+    cout << "==========================================\n";
+    cout << "  [L] Like  [V] Ver mas tarde  [Q] Quitar marcas  [Enter] Volver\n";
+    cout << "Seleccione: ";
+
+    string opcion;
+    std::getline(cin, opcion);
+    if (opcion.empty()) return;
+    char c = opcion[0];
+
+    if (c == 'L' || c == 'l') {
+        if (tieneLike) cout << ">> Ya le diste like a esta pelicula.\n";
+        else { userData.darLike(id); cout << ">> Like agregado.\n"; }
+    } else if (c == 'V' || c == 'v') {
+        if (enVer) cout << ">> Ya esta en 'Ver mas tarde'.\n";
+        else { userData.agregarVerMasTarde(id); cout << ">> Agregado a 'Ver mas tarde'.\n"; }
+    } else if (c == 'Q' || c == 'q') {
+        userData.quitarLike(id);
+        userData.quitarVerMasTarde(id);
+        cout << ">> Marcas removidas.\n";
+    }
+    pausar();
+}
+
+void Menu::menuVerMasTarde() {
+    limpiarPantalla();
+    cout << "==========================================\n";
+    cout << "  VER MAS TARDE\n";
+    cout << "==========================================\n\n";
+
+    const auto& vmt = userData.getVerMasTarde();
+    if (vmt.empty()) {
+        cout << "No tienes peliculas guardadas.\n";
+        pausar();
+        return;
+    }
+
+    vector<int> ids(vmt.begin(), vmt.end());
+    for (size_t i = 0; i < ids.size(); ++i) {
+        mostrarFilaPelicula((int)i + 1, ids[i]);
+    }
+
+    cout << "------------------------------------------\n";
+    cout << "Numero para ver detalle, [V] para volver: ";
+
+    string opcion;
+    std::getline(cin, opcion);
+    if (opcion.empty() || opcion[0] == 'V' || opcion[0] == 'v') return;
+
+    try {
+        int indice = std::stoi(opcion);
+        if (indice >= 1 && indice <= (int)ids.size()) {
+            mostrarDetallePelicula(ids[indice - 1]);
+        }
+    } catch (...) {}
+}
+
+void Menu::menuRecomendaciones() {
+    limpiarPantalla();
+    cout << "==========================================\n";
+    cout << "  RECOMENDACIONES PARA TI\n";
+    cout << "  (basado en tus likes)\n";
+    cout << "==========================================\n\n";
+
+    if (userData.getLikes().empty()) {
+        cout << "Aun no has dado like a ninguna pelicula.\n";
+        cout << "Busca peliculas y dales like.\n";
+        pausar();
+        return;
+    }
+
+    auto recs = recommender.generarRecomendaciones(userData.getLikes(), peliculas, 5);
+    if (recs.empty()) {
+        cout << "No hay recomendaciones disponibles.\n";
+        pausar();
+        return;
+    }
+
+    for (size_t i = 0; i < recs.size(); ++i) {
+        mostrarFilaPelicula((int)i + 1, recs[i]);
+    }
+
+    cout << "------------------------------------------\n";
+    cout << "Numero para ver detalle, [V] para volver: ";
+
+    string opcion;
+    std::getline(cin, opcion);
+    if (opcion.empty() || opcion[0] == 'V' || opcion[0] == 'v') return;
+
+    try {
+        int indice = std::stoi(opcion);
+        if (indice >= 1 && indice <= (int)recs.size()) {
+            mostrarDetallePelicula(recs[indice - 1]);
+        }
+    } catch (...) {}
+}
+
+void Menu::iniciar() {
+    string opcion;
+    do {
+        pantallaInicio();
+        std::getline(cin, opcion);
+
+        if      (opcion == "1") menuBuscar();
+        else if (opcion == "2") menuVerMasTarde();
+        else if (opcion == "3") menuRecomendaciones();
+    } while (opcion != "0");
+
+    userData.guardar();
+    cout << "\nDatos guardados. Hasta luego.\n";
+}
+
+==================== ./src/ui/Menu.h ====================
+
+#ifndef MENU_H
+#define MENU_H
+
+#include "../core/Trie.h"
+#include "../data/CSVReader.h"
+#include "../data/TagIndex.h"
+#include "../data/Pelicula.h"
+#include "../search/Buscador.h"
+#include "../user/UserData.h"
+#include "../user/Recommender.h"
+#include <vector>
+#include <string>
+
+// Punto único de contacto entre la UI y los módulos de A, B y C.
+// Integrante D.
+class Menu {
+public:
+    Menu();
+
+    void iniciar();
+
+private:
+    // Orden de declaración importa — Buscador depende de Trie, TagIndex, peliculas.
+    Trie trie;
+    TagIndex tagIndex;
+    std::vector<Pelicula> peliculas;
+    Buscador buscador;
+    UserData userData;
+    Recommender recommender;
+
+    // Pantallas
+    void pantallaInicio();
+    void menuBuscar();
+    void menuVerMasTarde();
+    void menuRecomendaciones();
+    void mostrarDetallePelicula(int id);
+
+    // Utilidades
+    void limpiarPantalla();
+    void pausar();
+    void cargarDatosSimulados();
+    void mostrarFilaPelicula(int indiceDisplay, int idPelicula) const;
+};
+
+#endif
+
+
+==================== ./src/ui/Paginador.cpp ====================
+
+#include "Paginador.h"
+#include <algorithm>
+
+Paginador::Paginador(int totalResultados, int resultadosPorPagina)
+    : paginaActual(1)
+    , resultadosPorPagina(resultadosPorPagina)
+    , totalResultados(totalResultados)
+{
+    totalPaginas = (totalResultados + resultadosPorPagina - 1) / resultadosPorPagina;
+    if (totalPaginas == 0) totalPaginas = 1;
+}
+
+int Paginador::getPaginaActual()    const { return paginaActual; }
+int Paginador::getTotalPaginas()    const { return totalPaginas; }
+int Paginador::getResultadosPorPag()const { return resultadosPorPagina; }
+int Paginador::getTotalResultados() const { return totalResultados; }
+int Paginador::getInicio()          const { return (paginaActual - 1) * resultadosPorPagina; }
+int Paginador::getFin()             const { return std::min(getInicio() + resultadosPorPagina, totalResultados); }
+
+bool Paginador::haySiguiente() const { return paginaActual < totalPaginas; }
+bool Paginador::hayAnterior()  const { return paginaActual > 1; }
+
+void Paginador::siguiente() { if (haySiguiente()) paginaActual++; }
+void Paginador::anterior()  { if (hayAnterior())  paginaActual--; }
+void Paginador::irAPagina(int pagina) {
+    if (pagina >= 1 && pagina <= totalPaginas) paginaActual = pagina;
+}
+
+
+==================== ./src/ui/Paginador.h ====================
+
+#ifndef PAGINADOR_H
+#define PAGINADOR_H
+
+// Lógica de paginación 5-en-5 (Integrante D).
+// Maneja índices [inicio, fin) sin tocar los datos paginados.
+class Paginador {
+private:
+    int paginaActual;
+    int totalPaginas;
+    int resultadosPorPagina;
+    int totalResultados;
+
+public:
+    Paginador(int totalResultados, int resultadosPorPagina = 5);
+
+    int  getPaginaActual()    const;
+    int  getTotalPaginas()    const;
+    int  getResultadosPorPag()const;
+    int  getTotalResultados() const;
+    int  getInicio()          const;   // índice del primer resultado de la página actual
+    int  getFin()             const;   // índice (exclusivo) del fin de la página actual
+
+    bool haySiguiente() const;
+    bool hayAnterior()  const;
+
+    void siguiente();
+    void anterior();
+    void irAPagina(int pagina);
+};
+
+#endif
+
+
+==================== ./src/user/Recommender.cpp ====================
+
+#include "Recommender.h"
+#include <algorithm>
+
+std::vector<int> Recommender::generarRecomendaciones(
+    std::set<int> likesIDs,
+    std::vector<Pelicula>& todasLasPeliculas,
+    int cantidad)
+{
+    std::vector<int> recomendados;
+    
+    if (likesIDs.empty() || todasLasPeliculas.empty()) return recomendados;
+    
+    // Para cada película no likeada, calcular score
+    std::vector<std::pair<int, int>> scores; // (id, score)
+    
+    for (const auto& p : todasLasPeliculas) {
+        if (likesIDs.count(p.id)) continue; // ya tiene like
+        
+        int score = 0;
+        std::string generoP = p.genero;
+        std::string directorP = p.director;
+        std::string castingP = p.casting;
+        
+        for (int idLike : likesIDs) {
+            // Buscar la película likeada
+            auto it = std::find_if(todasLasPeliculas.begin(), todasLasPeliculas.end(),
+                [idLike](const Pelicula& peli) { return peli.id == idLike; });
+            if (it == todasLasPeliculas.end()) continue;
+            
+            // Mismo director
+            if (directorP == it->director) score += 5;
+            
+            // Géneros en común (comparación simple)
+            if (generoP == it->genero) score += 3;
+            
+            // Actores en común (comparación simple)
+            if (castingP == it->casting && !castingP.empty()) score += 2;
+        }
+        
+        if (score > 0) {
+            scores.push_back({p.id, score});
+        }
+    }
+    
+    // Ordenar por score descendente
+    std::sort(scores.begin(), scores.end(),
+        [](const auto& a, const auto& b) { return a.second > b.second; });
+    
+    // Tomar los primeros 'cantidad'
+    for (int i = 0; i < std::min(cantidad, (int)scores.size()); i++) {
+        recomendados.push_back(scores[i].first);
+    }
+    
+    return recomendados;
+}
+
+
+==================== ./src/user/Recommender.h ====================
+
+#ifndef RECOMMENDER_H
+#define RECOMMENDER_H
+
+#include "../data/Pelicula.h"
+#include <vector>
+#include <set>
+
+// Algoritmo de recomendaciones (Integrante C).
+// Recibe el conjunto de IDs likeados y la lista completa de películas;
+// devuelve hasta `cantidad` IDs recomendados, excluyendo likes previos.
+class Recommender {
+public:
+    std::vector<int> generarRecomendaciones(
+        std::set<int> likesIDs,
+        std::vector<Pelicula>& todasLasPeliculas,
+        int cantidad = 5);
+};
+
+#endif
+
+
+==================== ./src/user/UserData.cpp ====================
+
+#include "UserData.h"
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+
+
+
+const string UserData::ARCHIVO_LIKES          = "user_data/likes.txt";
+const string UserData::ARCHIVO_VER_MAS_TARDE  = "user_data/ver_mas_tarde.txt";
+
+UserData::UserData() {
+    cargar();
+}
+
+void UserData::darLike(int idPelicula) {
+    likes.insert(idPelicula);
+}
+
+void UserData::quitarLike(int idPelicula) {
+    likes.erase(idPelicula);
+}
+
+bool UserData::tieneLike(int idPelicula) const {
+    return likes.count(idPelicula) > 0;
+}
+
+const set<int>& UserData::getLikes() const {
+    return likes;
+}
+void UserData::agregarVerMasTarde(int idPelicula) {
+    verMasTarde.insert(idPelicula);
+}
+
+void UserData::quitarVerMasTarde(int idPelicula) {
+    verMasTarde.erase(idPelicula);
+}
+
+bool UserData::estaEnVerMasTarde(int idPelicula) const {
+    return verMasTarde.count(idPelicula) > 0;
+}
+
+const set<int>& UserData::getVerMasTarde() const {
+    return verMasTarde;
+}
+void UserData::guardarArchivo(const set<int>& datos, const string& ruta) const {
+    ofstream archivo(ruta);
+    if (!archivo.is_open()) {
+        cerr << "[UserData] No se pudo abrir para escritura: " << ruta << "\n";
+        return;
+    }
+    for (int id : datos) {
+        archivo << id << "\n";
+    }
+}
+
+void UserData::cargarArchivo(set<int>& datos, const string& ruta) {
+    ifstream archivo(ruta);
+    if (!archivo.is_open()) {
+        return;
+    }
+    int id;
+    while (archivo >> id) {
+        datos.insert(id);
+    }
+}
+
+void UserData::guardar() const {
+    guardarArchivo(likes,        ARCHIVO_LIKES);
+    guardarArchivo(verMasTarde,  ARCHIVO_VER_MAS_TARDE);
+}
+
+void UserData::cargar() {
+    cargarArchivo(likes,        ARCHIVO_LIKES);
+    cargarArchivo(verMasTarde,  ARCHIVO_VER_MAS_TARDE);
+}
+
+
+==================== ./src/user/UserData.h ====================
+
+#ifndef USERDATA_H
+#define USERDATA_H
+
+#include <set>
+#include <string>
+using namespace std;
+
+class UserData {
+public:
+    UserData();
+
+    void darLike(int idPelicula);
+    void quitarLike(int idPelicula);
+    bool tieneLike(int idPelicula) const;
+    const set<int>& getLikes() const;
+
+    void agregarVerMasTarde(int idPelicula);
+    void quitarVerMasTarde(int idPelicula);
+    bool estaEnVerMasTarde(int idPelicula) const;
+    const set<int>& getVerMasTarde() const;
+
+    void guardar() const;
+    void cargar();
+
+private:
+    set<int> likes;
+    set<int> verMasTarde;
+
+    static const string ARCHIVO_LIKES;
+    static const string ARCHIVO_VER_MAS_TARDE;
+
+    void guardarArchivo(const set<int>& datos, const string& ruta) const;
+    void cargarArchivo(set<int>& datos, const string& ruta);
+};
+
+#endif

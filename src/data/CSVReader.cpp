@@ -3,12 +3,16 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include "PeliculaFactory.h"
+
 
 using std::string;
 using std::vector;
 using std::stringstream;
 using std::ifstream;
 using std::getline;
+
+
 
 string CSVReader::leerCeldaCSV(stringstream& ss) {
     string celda;
@@ -58,15 +62,15 @@ vector<Pelicula> CSVReader::cargarDatos(const string& rutaArchivo, TagIndex& ind
         Pelicula p;
 
         try {
-            p.id = idActual;
-            p.anio     = std::stoi(leerCeldaCSV(ss));                        // A: Release Year
-            p.titulo   = Normalizador::normalizar(leerCeldaCSV(ss));         // B: Title
-            leerCeldaCSV(ss);                                                // C: Origin (ignorar)
-            p.director = Normalizador::normalizar(leerCeldaCSV(ss));         // D: Director
-            p.casting  = Normalizador::normalizar(leerCeldaCSV(ss));         // E: Cast
-            p.genero   = Normalizador::normalizar(leerCeldaCSV(ss));         // F: Genre
-            leerCeldaCSV(ss);                                                // G: Wiki Page (ignorar)
-            p.sinopsis = Normalizador::normalizar(leerCeldaCSV(ss));         // H: Plot
+            // 1. Recolectamos los 8 campos en un vector
+                std::vector<std::string> campos;
+                campos.reserve(8);  // Optimización: reservamos espacio para 8 elementos
+                for (int i = 0; i < 8; ++i) {
+                    campos.push_back(leerCeldaCSV(ss));
+}
+
+            // 2. Le pedimos a la fábrica que cree la película con esos campos
+            Pelicula p = PeliculaFactory::crearDesdeCSV(campos, idActual);        // H: Plot
 
             indexer.agregarPelicula(p);
             peliculas.push_back(p);

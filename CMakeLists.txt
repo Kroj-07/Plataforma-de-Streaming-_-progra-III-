@@ -23,6 +23,7 @@ add_executable(streaming_app
         src/ui/Paginador.cpp
         src/user/Recommender.cpp
         src/user/UserData.cpp
+        src/ui/MainMenu.cpp      # <-- Nuevo
 )
 
 # Carpeta donde UserData persiste likes / ver-mas-tarde.

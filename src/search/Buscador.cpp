@@ -13,8 +13,8 @@ using std::string;
 using std::set;
 using std::vector;
 
-Buscador::Buscador(Trie& t, TagIndex& tx, const vector<Pelicula>& peliculas)
-    : trie(t), tagIndex(tx), peliculas(peliculas) {}
+Buscador::Buscador(Trie& t, TagIndex& tx, Repository<Pelicula>& repo)
+    : trie(t), tagIndex(tx), repositorio(repo)  {}
 
 set<int> Buscador::buscarTexto(const string& consulta) {
     if (consulta.empty()) return {};
@@ -30,5 +30,6 @@ set<int> Buscador::buscarTag(const string& tipo, const string& valor) {
 vector<int> Buscador::buscarOrdenado(const string& consulta) {
     auto ids = buscarTexto(consulta);
     if (ids.empty()) return {};
-    return RelevanceScorer::ordenarPorRelevancia(ids, peliculas, Normalizador::normalizar(consulta));
+    std::vector<Pelicula> todas = repositorio.getAll();
+    return RelevanceScorer::ordenarPorRelevancia(ids, todas, Normalizador::normalizar(consulta));
 }

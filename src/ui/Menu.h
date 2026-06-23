@@ -2,6 +2,7 @@
 #define MENU_H
 
 #include "../core/Trie.h"
+#include "../core/Repository.h"  // <-- NUEVO
 #include "../data/CSVReader.h"
 #include "../data/TagIndex.h"
 #include "../data/Pelicula.h"
@@ -11,19 +12,15 @@
 #include <vector>
 #include <string>
 
-// Punto único de contacto entre la UI y los módulos de A, B y C.
-// Integrante D.
 class Menu {
 public:
     Menu();
-
     void iniciar();
 
 private:
-    // Orden de declaración importa — Buscador depende de Trie, TagIndex, peliculas.
     Trie trie;
     TagIndex tagIndex;
-    std::vector<Pelicula> peliculas;
+    Repository<Pelicula> repositorioPeliculas;  // <-- NUEVO
     Buscador buscador;
     UserData userData;
     Recommender recommender;
@@ -38,7 +35,7 @@ private:
     // Utilidades
     void limpiarPantalla();
     void pausar();
-    void cargarDatosSimulados();
+    std::vector<Pelicula> cargarDatosSimulados();  // <-- AHORA DEVUELVE VECTOR
     void mostrarFilaPelicula(int indiceDisplay, int idPelicula) const;
 };
 

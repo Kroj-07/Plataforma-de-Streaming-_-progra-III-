@@ -15,53 +15,68 @@ using std::string;
 using std::vector;
 using std::set;
 
+// ============================================================
+// CONSTRUCTOR
+// ============================================================
 Menu::Menu()
     : trie(),
       tagIndex(),
-      peliculas(),
-      buscador(trie, tagIndex, peliculas),
+      repositorioPeliculas(),  // <-- Inicializar repositorio
+      buscador(trie, tagIndex, repositorioPeliculas),  // <-- Pasar repositorio
       userData(),
       recommender() {
 
     cout << "DEBUG: Constructor iniciado" << endl;
     cout.flush();
 
-    peliculas = CSVReader::cargarDatos("data/processed/peliculas_limpias.csv", tagIndex);
+    // 1. Cargar datos desde CSV
+    vector<Pelicula> vec = CSVReader::cargarDatos("data/processed/peliculas_limpias.csv", tagIndex);
     cout << "DEBUG: CSV cargado" << endl;
     cout.flush();
     
-    if (peliculas.empty()) {
+    // 2. Si está vacío, usar datos simulados
+    if (vec.empty()) {
         cout << "[Menu] CSV vacio o no encontrado. Usando datos simulados.\n";
-        cargarDatosSimulados();
+        vec = cargarDatosSimulados();  // <-- CORREGIDO: ahora devuelve vector
     }
 
-    cout << "[Menu] Indexando " << peliculas.size() << " peliculas en el Trie...\n";
+    // 3. Agregar TODAS las películas al repositorio
+    for (const auto& p : vec) {
+        repositorioPeliculas.add(p);
+    }
+
+    // 4. Indexar en el Trie
+    cout << "[Menu] Indexando " << vec.size() << " peliculas en el Trie...\n";
     cout.flush();
 
     size_t i = 0;
-    for (const auto& p : peliculas) {
+    for (const auto& p : vec) {
         trie.insertarTexto(p.titulo,   p.id);
         trie.insertarTexto(p.director, p.id);
         trie.insertarTexto(p.casting,  p.id);
         trie.insertarTexto(p.genero,   p.id);
-        // Sinopsis truncada: el suffix trie con sinopsis completas (35K filas)
-        // es O(n^2) por palabra y agota tiempo/memoria.
+        // Sinopsis truncada: O(n^2) en memoria si es completa
         trie.insertarTexto(p.sinopsis.substr(0, 120), p.id);
 
         if (++i % 2000 == 0) {
-            cout << "  " << i << " / " << peliculas.size() << "\n";
+            cout << "  " << i << " / " << vec.size() << "\n";
             cout.flush();
         }
     }
 
-    cout << "[Menu] " << peliculas.size() << " peliculas cargadas.\n";
+    cout << "[Menu] " << vec.size() << " peliculas cargadas.\n";
 }
 
-void Menu::cargarDatosSimulados() {
+// ============================================================
+// DATOS SIMULADOS (AHORA DEVUELVE VECTOR)
+// ============================================================
+std::vector<Pelicula> Menu::cargarDatosSimulados() {  // <-- CORREGIDO: devuelve vector
+    std::vector<Pelicula> vec;  // <-- Vector local
+
     auto add = [&](int anio, const string& titulo, const string& director,
                    const string& casting, const string& genero, const string& sinopsis) {
         Pelicula p;
-        p.id       = (int)peliculas.size();
+        p.id       = (int)vec.size();  // <-- Usar vec, no peliculas
         p.anio     = anio;
         p.titulo   = Normalizador::normalizar(titulo);
         p.director = Normalizador::normalizar(director);
@@ -69,7 +84,7 @@ void Menu::cargarDatosSimulados() {
         p.genero   = Normalizador::normalizar(genero);
         p.sinopsis = Normalizador::normalizar(sinopsis);
         tagIndex.agregarPelicula(p);
-        peliculas.push_back(p);
+        vec.push_back(p);  // <-- Usar vec, no peliculas
     };
 
     add(2008, "Iron Man", "Jon Favreau", "Robert Downey Jr.",
@@ -108,12 +123,14 @@ void Menu::cargarDatosSimulados() {
     add(1985, "Volver al Futuro", "Robert Zemeckis", "Michael J. Fox",
         "aventura, ciencia ficcion",
         "Un joven viaja en el tiempo.");
+
+    return vec;  // <-- Devolver el vector
 }
 
+// ============================================================
+// UTILIDADES
+// ============================================================
 void Menu::limpiarPantalla() {
-    // La ventana Run de CLion no soporta ni system("cls") ni ANSI escape.
-    // Imprimimos un separador visual; la pantalla anterior queda visible
-    // arriba (util para contexto) y la nueva queda claramente demarcada.
     cout << "\n\n==========================================\n\n";
 }
 
@@ -123,13 +140,20 @@ void Menu::pausar() {
     cin.get();
 }
 
+// ============================================================
+// MOSTRAR FILA DE PELÍCULA (CORREGIDO: usa repositorio)
+// ============================================================
 void Menu::mostrarFilaPelicula(int indiceDisplay, int idPelicula) const {
-    if (idPelicula < 0 || idPelicula >= (int)peliculas.size()) return;
-    const Pelicula& p = peliculas[idPelicula];
+    // Verificar si existe en el repositorio
+    if (!repositorioPeliculas.exists(idPelicula)) return;
+    const Pelicula& p = repositorioPeliculas.getById(idPelicula);  // <-- CORREGIDO
     cout << "  [" << indiceDisplay << "] " << p.titulo << " (" << p.anio << ")\n";
     cout << "      Director: " << p.director << "\n\n";
 }
 
+// ============================================================
+// PANTALLA DE INICIO (CORREGIDO: usa repositorio)
+// ============================================================
 void Menu::pantallaInicio() {
     limpiarPantalla();
     cout << "+------------------------------------------+\n";
@@ -156,7 +180,9 @@ void Menu::pantallaInicio() {
     if (userData.getLikes().empty()) {
         cout << "  Da like a peliculas para ver recomendaciones\n";
     } else {
-        auto recs = recommender.generarRecomendaciones(userData.getLikes(), peliculas, 3);
+        // Obtener todas las películas del repositorio
+        std::vector<Pelicula> todas = repositorioPeliculas.getAll();  // <-- CORREGIDO
+        auto recs = recommender.generarRecomendaciones(userData.getLikes(), todas, 3);
         if (recs.empty()) {
             cout << "  Aun no hay recomendaciones\n";
         } else {
@@ -174,6 +200,9 @@ void Menu::pantallaInicio() {
     cout << "Seleccione una opcion: ";
 }
 
+// ============================================================
+// MENÚ DE BÚSQUEDA (no necesita cambios)
+// ============================================================
 void Menu::menuBuscar() {
     limpiarPantalla();
     cout << "==========================================\n";
@@ -237,13 +266,17 @@ void Menu::menuBuscar() {
     } while (nav != 'V' && nav != 'v');
 }
 
+// ============================================================
+// DETALLE DE PELÍCULA (CORREGIDO: usa repositorio)
+// ============================================================
 void Menu::mostrarDetallePelicula(int id) {
-    if (id < 0 || id >= (int)peliculas.size()) {
+    // Verificar si existe en el repositorio
+    if (!repositorioPeliculas.exists(id)) {
         cout << "Pelicula no encontrada.\n";
         pausar();
         return;
     }
-    const Pelicula& p = peliculas[id];
+    const Pelicula& p = repositorioPeliculas.getById(id);  // <-- CORREGIDO
 
     limpiarPantalla();
     cout << "==========================================\n";
@@ -285,6 +318,9 @@ void Menu::mostrarDetallePelicula(int id) {
     pausar();
 }
 
+// ============================================================
+// MENÚ VER MÁS TARDE (no necesita cambios)
+// ============================================================
 void Menu::menuVerMasTarde() {
     limpiarPantalla();
     cout << "==========================================\n";
@@ -318,6 +354,9 @@ void Menu::menuVerMasTarde() {
     } catch (...) {}
 }
 
+// ============================================================
+// MENÚ RECOMENDACIONES (CORREGIDO: usa repositorio)
+// ============================================================
 void Menu::menuRecomendaciones() {
     limpiarPantalla();
     cout << "==========================================\n";
@@ -332,7 +371,9 @@ void Menu::menuRecomendaciones() {
         return;
     }
 
-    auto recs = recommender.generarRecomendaciones(userData.getLikes(), peliculas, 5);
+    // Obtener todas las películas del repositorio
+    std::vector<Pelicula> todas = repositorioPeliculas.getAll();  // <-- CORREGIDO
+    auto recs = recommender.generarRecomendaciones(userData.getLikes(), todas, 5);
     if (recs.empty()) {
         cout << "No hay recomendaciones disponibles.\n";
         pausar();
@@ -358,6 +399,9 @@ void Menu::menuRecomendaciones() {
     } catch (...) {}
 }
 
+// ============================================================
+// INICIAR (no necesita cambios)
+// ============================================================
 void Menu::iniciar() {
     string opcion;
     do {

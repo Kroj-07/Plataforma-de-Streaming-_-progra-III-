@@ -17,3 +17,7 @@
 
 # Thumbs
 Thumbs.db
+build/
+cmake-build-debug/
+cmake-build-release/
+*.exe
