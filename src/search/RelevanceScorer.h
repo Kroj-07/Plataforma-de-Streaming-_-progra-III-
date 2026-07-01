@@ -3,6 +3,7 @@
 #define RELEVANCESCORER_H
 
 #include "../data/Pelicula.h"
+#include "../core/Repository.h"
 #include <vector>
 #include <set>
 #include <string>
@@ -42,15 +43,17 @@ public:
     }
 
     // Ordena IDs por relevancia (mayor score primero).  O(n log n).
+    // Busca cada pelicula por su id real en el Repository (O(1) promedio),
+    // en lugar de indexar un vector cuyo orden no coincide con el id.
     static std::vector<int> ordenarPorRelevancia(
             const std::set<int>& ids,
-            const std::vector<Pelicula>& peliculas,
+            const Repository<Pelicula>& repo,
             const std::string& consulta) {
         auto terminos = tokenizar(consulta);
         std::vector<int> v(ids.begin(), ids.end());
         std::sort(v.begin(), v.end(), [&](int a, int b) {
-            return calcularPuntaje(peliculas[a], terminos) >
-                   calcularPuntaje(peliculas[b], terminos);
+            return calcularPuntaje(repo.getById(a), terminos) >
+                   calcularPuntaje(repo.getById(b), terminos);
         });
         return v;
     }

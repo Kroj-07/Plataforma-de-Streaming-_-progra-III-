@@ -53,7 +53,6 @@ public:
         } else if (indice != -1) {
             std::cout << "Numero fuera de rango.\n";
         }
-        } catch (...) {}
     }
 };
 

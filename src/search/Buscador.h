@@ -2,6 +2,7 @@
 #define BUSCADOR_H
 
 #include "../core/Trie.h"
+#include "../core/Repository.h"
 #include "../data/TagIndex.h"
 #include "../data/Pelicula.h"
 #include <set>
@@ -19,7 +20,7 @@ public:
 private:
     Trie& trie;
     TagIndex& tagIndex;
-    Repository<Pelicula>& repo;
+    Repository<Pelicula>& repositorio;
 };
 
 #endif

@@ -6,6 +6,7 @@
 #include "../data/CSVReader.h"
 #include "../core/Normalizador.h"
 #include <iostream>
+#include <chrono>
 
 using std::cout;
 using std::cin;
@@ -19,11 +20,14 @@ MainMenu::MainMenu(Trie& t, TagIndex& tx, Repository<Pelicula>& repo,
     // --- NUEVO: Registrar este objeto como observer de UserData ---
     userData.attach(this);  // <-- MainMenu se suscribe a los cambios de UserData
 
-    cout << "DEBUG: Cargando datos..." << endl;
+    cout << "Cargando datos (parseo + normalizacion en paralelo)..." << endl;
     cout.flush();
 
-    std::vector<Pelicula> vec = CSVReader::cargarDatos("data/processed/peliculas_limpias.csv", tagIndex);
-    cout << "DEBUG: CSV cargado" << endl;
+    auto t0 = std::chrono::high_resolution_clock::now();
+    std::vector<Pelicula> vec = CSVReader::cargarDatosParalelo("data/processed/peliculas_limpias.csv", tagIndex);
+    auto t1 = std::chrono::high_resolution_clock::now();
+    double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    cout << "CSV cargado en " << ms << " ms\n";
     cout.flush();
     
     if (vec.empty()) {

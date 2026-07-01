@@ -158,38 +158,47 @@ Puntaje = (Título × 50) + (Director × 30) + (Casting × 30) + (Sinopsis × 5)
 | Patrón | Ubicación | Propósito |
 |--------|-----------|-----------|
 | **Factory** | `PeliculaFactory` | Centraliza la creación de objetos `Pelicula` desde el CSV. |
-| **Strategy** | `RelevanceScorer` (Strategy Pattern) | Permite cambiar el algoritmo de ranking (lineal → TF-IDF) sin modificar el Buscador. (Implementado por Nicole). |
-| **Observer** | `UserData` ↔ `MainMenu` | La UI se actualiza automáticamente cuando el usuario da Like o agrega a "Ver más tarde". |
-| **Singleton** | `UserData` | Garantiza una única instancia de los datos del usuario en toda la aplicación. (Implementado por Thiago). |
-| **Repository (Genérico)** | `Repository<T>` | Almacenamiento genérico con búsqueda por ID en O(1). |
+| **Observer** | `UserData` (Subject) ↔ `MainMenu` (`IObserver`) | La UI se marca como desactualizada automáticamente cuando el usuario da Like o agrega a "Ver más tarde". |
+| **Repository (Genérico)** | `Repository<T>` | Almacenamiento genérico con búsqueda por ID en O(1) promedio. |
 
-**Justificación:** Estos patrones aplican los principios **SOLID** (Responsabilidad Única, Abierto/Cerrado, Inversión de Dependencias) y mejoran la mantenibilidad del código.
+**Justificación:** Estos patrones aplican los principios **SOLID** (Responsabilidad Única, Abierto/Cerrado) y mejoran la mantenibilidad del código.
 
 ---
 
 ## ⚡ Programación Paralela
 
-**Implementación:** Paralelización de la carga del CSV usando `std::async`.
+**Implementación:** Paralelización del **parseo y normalización** del CSV usando `std::async` (`CSVReader::cargarDatosParalelo`).
 
-| Método | Tiempo (segundos) | Mejora |
-|--------|-------------------|--------|
-| Secuencial | ~5.2s | Línea base |
-| Paralelo (4 hilos) | ~1.8s | **65% más rápido** |
+**¿Cómo funciona?**
 
-**Beneficio:** Mejora la experiencia de usuario al reducir el tiempo de inicio del programa.
+1. La **lectura del archivo (E/S)** se hace en una sola pasada secuencial (leer disco no se beneficia de varios hilos).
+2. Las líneas crudas se reparten en **N bloques** (N = `std::thread::hardware_concurrency()`).
+3. Cada bloque se **parsea y normaliza en un hilo distinto** con `std::async(std::launch::async, ...)`. Esta es la parte costosa (CPU): tokenizar, quitar tildes/puntuación y pasar a minúsculas ~35 000 filas × 5 campos.
+4. Los resultados se recogen **en orden**, se reasignan IDs contiguos y se llena el `TagIndex` en un solo hilo (porque `unordered_map` no es seguro para escritura concurrente).
+
+**Medición real** (dataset de 34 886 películas, compilado con `-O2`, CPU de 12 núcleos):
+
+| Método | Tiempo (promedio de 5 corridas) | Speedup |
+|--------|--------------------------------|---------|
+| Secuencial (`cargarDatos`) | ~2002 ms | 1.0x (línea base) |
+| Paralelo (`cargarDatosParalelo`, 12 hilos) | ~773 ms | **2.59x más rápido** |
+
+> Los tiempos se obtienen ejecutando [`bench_carga.cpp`](bench_carga.cpp), que compara ambas versiones sobre el mismo dataset. El speedup no es lineal (2.59x con 12 hilos) porque la E/S del archivo y el llenado del `TagIndex` siguen siendo secuenciales (ley de Amdahl).
+
+**Beneficio:** Reduce a menos de la mitad el tiempo de inicio del programa.
 
 ---
 
 ## 📊 Benchmarks y Eficiencia
 
-| Prueba | Tiempo (segundos) | Mejora |
-|--------|-------------------|--------|
-| **Carga CSV secuencial** | ~5.2s | Línea base |
-| **Carga CSV paralela (4 hilos)** | ~1.8s | **65% más rápido** |
-| **Búsqueda lineal (35,000 películas)** | ~0.045s | - |
-| **Búsqueda con Trie (35,000 películas)** | ~0.0003s | **99% más rápido** |
+| Prueba | Tiempo | Mejora |
+|--------|--------|--------|
+| **Carga CSV secuencial** | ~2002 ms | Línea base |
+| **Carga CSV paralela (12 hilos)** | ~773 ms | **2.59x más rápido** |
 
-**Conclusión:** El Suffix Trie reduce drásticamente el tiempo de búsqueda, y la carga paralela acelera el inicio del programa.
+**Conclusión:** La carga paralela acelera el inicio del programa a ~1/2.6 del tiempo, y el Suffix Trie permite búsquedas por subcadena en O(k).
+
+> Nota: los tiempos de carga se miden con [`bench_carga.cpp`](bench_carga.cpp) sobre el dataset real de 34 886 películas.
 
 ---
 

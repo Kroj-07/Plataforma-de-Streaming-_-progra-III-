@@ -17,11 +17,6 @@ static const int COL_GENERO = 5;
 static const int COL_WIKI = 6;    // Ignorado
 static const int COL_SINOPSIS = 7;
 
-// Y luego en el código:
-p.anio = std::stoi(campos[COL_ANIO]);
-p.titulo = Normalizador::normalizar(campos[COL_TITULO]);
-// etc.
-
 class PeliculaFactory {
 public:
     // Aquí irá el método mágico

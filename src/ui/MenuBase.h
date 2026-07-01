@@ -41,6 +41,18 @@ public:
         std::cin.get();
     }
 
+    // Lee un numero entero desde stdin. Devuelve -1 si la entrada no es valida.
+    int leerNumero(const std::string& prompt) const {
+        std::cout << prompt;
+        std::string entrada;
+        std::getline(std::cin, entrada);
+        try {
+            return std::stoi(entrada);
+        } catch (...) {
+            return -1;
+        }
+    }
+
     void mostrarFilaPelicula(int indiceDisplay, int idPelicula) const {
         if (!repositorio.exists(idPelicula)) return;
         const Pelicula& p = repositorio.getById(idPelicula);

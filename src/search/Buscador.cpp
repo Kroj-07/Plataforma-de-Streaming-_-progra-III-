@@ -30,6 +30,5 @@ set<int> Buscador::buscarTag(const string& tipo, const string& valor) {
 vector<int> Buscador::buscarOrdenado(const string& consulta) {
     auto ids = buscarTexto(consulta);
     if (ids.empty()) return {};
-    std::vector<Pelicula> todas = repositorio.getAll();
-    return RelevanceScorer::ordenarPorRelevancia(ids, todas, Normalizador::normalizar(consulta));
+    return RelevanceScorer::ordenarPorRelevancia(ids, repositorio, Normalizador::normalizar(consulta));
 }
