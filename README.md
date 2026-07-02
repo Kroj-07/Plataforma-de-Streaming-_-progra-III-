@@ -81,7 +81,7 @@ raíz
 
 **Limitación:** El espacio es O(n²) en el peor caso. Por eso **truncamos la sinopsis a 120 caracteres** para evitar problemas de memoria (el dataset tiene 35,000 películas con sinopsis largas).
 
----
+
 
 ## 🧹 Preprocesamiento de Datos
 
@@ -117,9 +117,11 @@ Antes de insertar en el Trie, los datos pasan por un **Normalizador** que:
 - Índices en `unordered_map` para **director, género y actor**.
 - Búsqueda **O(1)** promedio, pero solo por **coincidencia exacta** (ej: `"christopher nolan"` ≠ `"nolan"`).
 
-### Algoritmo de Ranking (Strategy: `PesosFijosStrategy`)
+### Algoritmo de Ranking (Strategy: `IScoringStrategy`)
 
-El ranking se implementa con el **patrón Strategy** (`IScoringStrategy`), de modo que se puede intercambiar el algoritmo sin tocar el `Buscador`. La estrategia por defecto usa **pesos fijos**:
+El ranking se implementa con el **patrón Strategy**, de modo que se puede intercambiar el algoritmo sin tocar el `Buscador`. Hay **dos estrategias concretas**:
+
+#### 1. `PesosFijosStrategy` (pesos fijos)
 
 | Criterio | Peso | Razón |
 |----------|------|-------|
@@ -132,7 +134,17 @@ El ranking se implementa con el **patrón Strategy** (`IScoringStrategy`), de mo
 
 **Decisión de diseño:** la sinopsis se puntúa por *presencia* y no por *cada aparición*. Antes se sumaba por aparición, lo que inflaba películas cuya sinopsis repetía subcadenas comunes (ej: "man" dentro de "many", "woman", "human"), dejándolas por encima de coincidencias exactas de título. El bonus por frase completa garantiza que el match exacto siempre domine.
 
-**Mejora futura:** implementar una estrategia alternativa **TF-IDF** (basta crear otra clase que implemente `IScoringStrategy`).
+#### 2. `TFIDFScoringStrategy` (TF-IDF ponderado) — **estrategia activa por defecto**
+
+Pondera cada término por **TF-IDF**: un término que aparece en muchas películas (ej. "the", "man") pesa menos que uno raro y específico, gracias al **IDF** (Inverse Document Frequency) calculado sobre las 34,886 películas:
+
+- **TF** (Term Frequency): cuenta las ocurrencias del término, ponderadas por campo (título ×10, director ×5, casting ×4, género ×2, sinopsis por presencia).
+- **IDF**: `log10(1 + total_documentos / (1 + df))`, con suavizado de Laplace para evitar división por cero.
+- **Bonus de +500** si el título contiene la frase completa de la búsqueda.
+
+El `Buscador` se construye antes de cargar el CSV, así que su estrategia inicial no tiene datos. Por eso `MainMenu` **reconstruye** la estrategia TF-IDF con `buscador.setEstrategia(...)` justo después de cargar las 34,886 películas, para que el índice de frecuencias (DF) se calcule correctamente.
+
+**Cómo cambiar de estrategia:** basta con llamar `buscador.setEstrategia(std::make_unique<PesosFijosStrategy>())` (o cualquier otra clase que implemente `IScoringStrategy`) — el `Buscador` no necesita cambios.
 
 ---
 
@@ -159,7 +171,7 @@ El ranking se implementa con el **patrón Strategy** (`IScoringStrategy`), de mo
 | **Factory** | `PeliculaFactory` | Centraliza la creación de objetos `Pelicula` desde el CSV. |
 | **Observer** | `UserData` (Subject) ↔ `MainMenu` (`IObserver`) | La UI se marca como desactualizada automáticamente cuando el usuario da Like o agrega a "Ver más tarde". |
 | **Singleton** | `UserData::getInstance()` | Garantiza una única instancia global de los datos del usuario (Meyer's Singleton, thread-safe). Constructor privado + copia deshabilitada. |
-| **Strategy** | `IScoringStrategy` → `PesosFijosStrategy`, usado por `Buscador` | Permite intercambiar el algoritmo de ranking (pesos fijos → TF-IDF u otro) en tiempo de ejecución sin modificar el `Buscador` (`setEstrategia`). |
+| **Strategy** | `IScoringStrategy` → `PesosFijosStrategy` / `TFIDFScoringStrategy`, usado por `Buscador` | Permite intercambiar el algoritmo de ranking (pesos fijos ↔ TF-IDF) en tiempo de ejecución sin modificar el `Buscador` (`setEstrategia`). |
 | **Repository (Genérico)** | `Repository<T>` | Almacenamiento genérico con búsqueda por ID en O(1) promedio. |
 
 **Justificación:** Estos 5 patrones aplican los principios **SOLID** (Responsabilidad Única, Abierto/Cerrado, Inversión de Dependencias) y mejoran la mantenibilidad del código.
@@ -197,9 +209,12 @@ El ranking se implementa con el **patrón Strategy** (`IScoringStrategy`), de mo
 | **Carga CSV secuencial** | ~2002 ms | Línea base |
 | **Carga CSV paralela (12 hilos)** | ~773 ms | **2.59x más rápido** |
 
-**Conclusión:** La carga paralela acelera el inicio del programa a ~1/2.6 del tiempo, y el Suffix Trie permite búsquedas por subcadena en O(k).
+| **Indexado Trie CON truncamiento** | ~15.7 s | Línea base |
+| **Indexado Trie SIN truncamiento** | ~610.8 s | 39x más lento |
 
-> Nota: los tiempos de carga se miden con [`bench_carga.cpp`](bench_carga.cpp) sobre el dataset real de 34 886 películas.
+**Conclusión:** La carga paralela acelera el inicio del programa a ~1/2.6 del tiempo, el Suffix Trie permite búsquedas por subcadena en O(k), y truncar la sinopsis a 120 caracteres evita el costo cuadrático de indexar texto completo (verificado empíricamente: 39x más lento sin truncar).
+
+> Nota: los tiempos se miden con [`bench_carga.cpp`](bench_carga.cpp) y [`bench_trie.cpp`](bench_trie.cpp) sobre el dataset real de 34 886 películas.
 
 ---
 
@@ -250,6 +265,7 @@ Plataforma-de-Streaming-_-progra-III-/
 ├── README.md
 ├── main.cpp
 ├── bench_carga.cpp            # Benchmark carga secuencial vs. paralela
+├── bench_trie.cpp             # Benchmark indexado Trie: con vs. sin truncar
 ├── test_recommender.cpp       # Test del algoritmo de recomendaciones
 ├── data/
 │   ├── processed/peliculas_limpias.csv
@@ -275,7 +291,8 @@ Plataforma-de-Streaming-_-progra-III-/
 │   │   ├── Buscador.cpp
 │   │   ├── RelevanceScorer.h   # Utilidad de tokenización
 │   │   ├── IScoringStrategy.h  # Patrón Strategy (interfaz)
-│   │   └── PesosFijosStrategy.h# Patrón Strategy (implementación)
+│   │   ├── PesosFijosStrategy.h    # Strategy: pesos fijos
+│   │   └── TFIDFScoringStrategy.h  # Strategy: TF-IDF (activa por defecto)
 │   ├── ui/
 │   │   ├── IObserver.h         # Patrón Observer (interfaz)
 │   │   ├── MenuBase.h
