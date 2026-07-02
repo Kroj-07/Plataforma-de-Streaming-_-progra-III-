@@ -33,11 +33,11 @@ public:
     // 6. Asignamos director (columna 3)
     p.director = Normalizador::normalizar(campos[3]);
 
-    // 7. Asignamos casting (columna 4)
-    p.casting = Normalizador::normalizar(campos[4]);
+    // 7. Asignamos casting (columna 4) - lista separada por comas
+    p.casting = Normalizador::normalizarLista(campos[4]);
 
-    // 8. Asignamos género (columna 5)
-    p.genero = Normalizador::normalizar(campos[5]);
+    // 8. Asignamos género (columna 5) - lista separada por comas
+    p.genero = Normalizador::normalizarLista(campos[5]);
 
     // 10. Asignamos sinopsis (columna 7) y normalizamos
     p.sinopsis = Normalizador::normalizar(campos[7]);
