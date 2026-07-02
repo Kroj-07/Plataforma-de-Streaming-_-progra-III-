@@ -3,6 +3,7 @@
 #include "src/user/Recommender.h"
 #include <iostream>
 #include <chrono>
+#include <algorithm>
 
 int main() {
     std::vector<Pelicula> peliculas;

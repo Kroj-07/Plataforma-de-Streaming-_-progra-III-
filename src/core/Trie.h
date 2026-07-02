@@ -6,9 +6,6 @@
 #include <unordered_map>
 #include <vector>
 
-using namespace std;
-
-
 // Suffix Trie — implementación de A.
 // Almacena todos los sufijos de cada palabra para permitir búsqueda
 // por subcadena en O(k) donde k es la longitud del query.
@@ -26,13 +23,13 @@ public:
     Trie(Trie&&) = delete;
     Trie& operator=(Trie&&) = delete;
 
-    void insertarPalabra(string palabra, int idPelicula);
+    void insertarPalabra(std::string palabra, int idPelicula);
 
-    void insertarTexto(string texto, int idPelicula);
+    void insertarTexto(std::string texto, int idPelicula);
 
-    set<int> buscarSubcadena(string subcadena);
+    std::set<int> buscarSubcadena(std::string subcadena);
 
-    set<int> buscarFrase(string frase);
+    std::set<int> buscarFrase(std::string frase);
     
 private:
     struct NodoTrie;
