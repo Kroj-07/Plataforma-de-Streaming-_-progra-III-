@@ -6,6 +6,7 @@
 #include "Buscador.h"
 #include "RelevanceScorer.h"
 #include "PesosFijosStrategy.h"
+#include "TFIDFScoringStrategy.h"
 #include "../core/Normalizador.h"
 #include <algorithm>
 #include <utility>
@@ -16,7 +17,7 @@ using std::vector;
 
 Buscador::Buscador(Trie& t, TagIndex& tx, Repository<Pelicula>& repo)
     : trie(t), tagIndex(tx), repositorio(repo),
-      estrategia(std::make_unique<PesosFijosStrategy>())  {}
+      estrategia(std::make_unique<TFIDFScoringStrategy>(repo))  {}
 
 void Buscador::setEstrategia(std::unique_ptr<IScoringStrategy> nueva) {
     if (nueva) estrategia = std::move(nueva);
