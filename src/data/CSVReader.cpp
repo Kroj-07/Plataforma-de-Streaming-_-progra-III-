@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <future>
 #include <thread>
-#include <optional>
 #include "PeliculaFactory.h"
 
 
@@ -109,9 +108,8 @@ vector<Pelicula> CSVReader::cargarDatosParalelo(const string& rutaArchivo, TagIn
     const size_t total = lineas.size();
     const size_t tamBloque = (total + nHilos - 1) / nHilos;
 
-    // Cada hilo devuelve sus peliculas parseadas EN ORDEN (con id temporal).
-    // Usamos optional para conservar la posicion aunque una linea sea corrupta
-    // no es necesario: cada worker ya filtra las corruptas y conserva el orden.
+    // Cada hilo procesa su bloque y devuelve las peliculas parseadas EN ORDEN
+    // (con id temporal). Las filas corruptas se descartan dentro del worker.
     auto worker = [&lineas, total, tamBloque](size_t bloque) {
         vector<Pelicula> parcial;
         size_t inicio = bloque * tamBloque;

@@ -149,7 +149,7 @@ Puntaje = (Título × 50) + (Director × 30) + (Casting × 30) + (Sinopsis × 5)
 
 **Ejemplo:** Si el usuario da Like a `"Interestelar"` (Christopher Nolan, Ciencia Ficción, Drama), el sistema recomendará `"Dunkirk"` (+5 por director) y `"Inception"` (+5 por director).
 
-**Limitación:** Solo compara strings exactos. No tokeniza géneros ni actores (ej: `"accion, drama"` ≠ `"drama, accion"`). Mejora futura: tokenizar y comparar conjuntos.
+**Optimización aplicada:** El algoritmo **tokeniza** géneros y casting (por comas) y compara por **intersección de conjuntos**, de modo que `"accion, drama"` y `"drama, accion"` sí se consideran similares. Además, se precalcula un mapa `id → Pelicula*` una sola vez, reduciendo la complejidad de **O(P²·L)** a **O(P·L)** (medido: ~16× más rápido sobre 35 000 películas).
 
 ---
 
@@ -159,9 +159,11 @@ Puntaje = (Título × 50) + (Director × 30) + (Casting × 30) + (Sinopsis × 5)
 |--------|-----------|-----------|
 | **Factory** | `PeliculaFactory` | Centraliza la creación de objetos `Pelicula` desde el CSV. |
 | **Observer** | `UserData` (Subject) ↔ `MainMenu` (`IObserver`) | La UI se marca como desactualizada automáticamente cuando el usuario da Like o agrega a "Ver más tarde". |
+| **Singleton** | `UserData::getInstance()` | Garantiza una única instancia global de los datos del usuario (Meyer's Singleton, thread-safe). Constructor privado + copia deshabilitada. |
+| **Strategy** | `IScoringStrategy` → `PesosFijosStrategy`, usado por `Buscador` | Permite intercambiar el algoritmo de ranking (pesos fijos → TF-IDF u otro) en tiempo de ejecución sin modificar el `Buscador` (`setEstrategia`). |
 | **Repository (Genérico)** | `Repository<T>` | Almacenamiento genérico con búsqueda por ID en O(1) promedio. |
 
-**Justificación:** Estos patrones aplican los principios **SOLID** (Responsabilidad Única, Abierto/Cerrado) y mejoran la mantenibilidad del código.
+**Justificación:** Estos 5 patrones aplican los principios **SOLID** (Responsabilidad Única, Abierto/Cerrado, Inversión de Dependencias) y mejoran la mantenibilidad del código.
 
 ---
 

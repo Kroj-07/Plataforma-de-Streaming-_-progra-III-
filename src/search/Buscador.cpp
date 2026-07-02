@@ -1,20 +1,26 @@
 // =====================================================================
-// ORQUESTADOR DE BUSQUEDA - Avance Semana 8 (Integrante D)
-// Clase puente que conecta el Trie (B) con el TagIndex (B) y el
-// RelevanceScorer (B).  En el avance solo se expone la firma; la logica
-// de orquestacion completa (combinar texto + tags + ranking + paginacion
-// perezosa) se completara en semanas posteriores.
+// ORQUESTADOR DE BUSQUEDA
+// Clase puente que conecta el Trie con el TagIndex y la estrategia de
+// ranking (Strategy Pattern). Combina busqueda por texto + ranking.
 // =====================================================================
 #include "Buscador.h"
 #include "RelevanceScorer.h"
+#include "PesosFijosStrategy.h"
 #include "../core/Normalizador.h"
+#include <algorithm>
+#include <utility>
 
 using std::string;
 using std::set;
 using std::vector;
 
 Buscador::Buscador(Trie& t, TagIndex& tx, Repository<Pelicula>& repo)
-    : trie(t), tagIndex(tx), repositorio(repo)  {}
+    : trie(t), tagIndex(tx), repositorio(repo),
+      estrategia(std::make_unique<PesosFijosStrategy>())  {}
+
+void Buscador::setEstrategia(std::unique_ptr<IScoringStrategy> nueva) {
+    if (nueva) estrategia = std::move(nueva);
+}
 
 set<int> Buscador::buscarTexto(const string& consulta) {
     if (consulta.empty()) return {};
@@ -30,5 +36,24 @@ set<int> Buscador::buscarTag(const string& tipo, const string& valor) {
 vector<int> Buscador::buscarOrdenado(const string& consulta) {
     auto ids = buscarTexto(consulta);
     if (ids.empty()) return {};
-    return RelevanceScorer::ordenarPorRelevancia(ids, repositorio, Normalizador::normalizar(consulta));
+
+    auto terminos = RelevanceScorer::tokenizar(Normalizador::normalizar(consulta));
+
+    // Decorate-sort-undecorate: calculamos el puntaje de cada pelicula UNA
+    // sola vez (usando la estrategia actual) en lugar de recalcularlo en cada
+    // comparacion del sort. Pasa de O(n log n) evaluaciones a O(n).
+    vector<std::pair<int, int>> conPuntaje;  // (score, id)
+    conPuntaje.reserve(ids.size());
+    for (int id : ids) {
+        int score = estrategia->puntuar(repositorio.getById(id), terminos);
+        conPuntaje.push_back({score, id});
+    }
+
+    std::sort(conPuntaje.begin(), conPuntaje.end(),
+              [](const auto& a, const auto& b) { return a.first > b.first; });
+
+    vector<int> resultado;
+    resultado.reserve(conPuntaje.size());
+    for (const auto& par : conPuntaje) resultado.push_back(par.second);
+    return resultado;
 }

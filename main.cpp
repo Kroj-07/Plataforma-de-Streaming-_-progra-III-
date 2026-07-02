@@ -5,7 +5,7 @@ int main() {
     TagIndex tagIndex;
     Repository<Pelicula> repositorio;
     Buscador buscador(trie, tagIndex, repositorio);
-    UserData userData;
+    UserData& userData = UserData::getInstance();
     Recommender recommender;
 
     MainMenu menu(trie, tagIndex, repositorio, buscador, userData, recommender);

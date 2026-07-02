@@ -4,6 +4,7 @@
 #include "../data/Pelicula.h"
 #include <vector>
 #include <set>
+#include <string>
 
 // Algoritmo de recomendaciones (Integrante C).
 // Recibe el conjunto de IDs likeados y la lista completa de películas;
@@ -11,9 +12,15 @@
 class Recommender {
 public:
     std::vector<int> generarRecomendaciones(
-        std::set<int> likesIDs,
-        std::vector<Pelicula>& todasLasPeliculas,
+        const std::set<int>& likesIDs,
+        const std::vector<Pelicula>& todasLasPeliculas,
         int cantidad = 5);
+
+private:
+    // Separa una lista tipo "accion, drama" en un conjunto de tokens
+    // normalizados ("accion", "drama"). Permite comparar por interseccion
+    // de conjuntos en vez de comparar el string completo.
+    static std::set<std::string> tokenizarLista(const std::string& csvLista);
 };
 
 #endif

@@ -7,11 +7,19 @@ using std::cerr;
 using std::ofstream;
 using std::ifstream;
 
-const string UserData::ARCHIVO_LIKES          = "user_data/likes.txt";
-const string UserData::ARCHIVO_VER_MAS_TARDE  = "user_data/ver_mas_tarde.txt";
+const std::string UserData::ARCHIVO_LIKES          = "user_data/likes.txt";
+const std::string UserData::ARCHIVO_VER_MAS_TARDE  = "user_data/ver_mas_tarde.txt";
 
 UserData::UserData() {
     cargar();
+}
+
+// Meyer's Singleton: la instancia estatica local se construye una unica vez,
+// de forma perezosa (en el primer llamado) y con destruccion automatica al
+// finalizar el programa. Es thread-safe desde C++11.
+UserData& UserData::getInstance() {
+    static UserData instancia;
+    return instancia;
 }
 
 // ============================================================
@@ -57,7 +65,7 @@ bool UserData::tieneLike(int idPelicula) const {
     return likes.count(idPelicula) > 0;
 }
 
-const set<int>& UserData::getLikes() const {
+const std::set<int>& UserData::getLikes() const {
     return likes;
 }
 
@@ -75,7 +83,7 @@ bool UserData::estaEnVerMasTarde(int idPelicula) const {
     return verMasTarde.count(idPelicula) > 0;
 }
 
-const set<int>& UserData::getVerMasTarde() const {
+const std::set<int>& UserData::getVerMasTarde() const {
     return verMasTarde;
 }
 
@@ -83,7 +91,7 @@ const set<int>& UserData::getVerMasTarde() const {
 // PERSISTENCIA (SIN CAMBIOS)
 // ============================================================
 
-void UserData::guardarArchivo(const set<int>& datos, const string& ruta) const {
+void UserData::guardarArchivo(const std::set<int>& datos, const std::string& ruta) const {
     ofstream archivo(ruta);
     if (!archivo.is_open()) {
         cerr << "[UserData] No se pudo abrir para escritura: " << ruta << "\n";
@@ -94,7 +102,7 @@ void UserData::guardarArchivo(const set<int>& datos, const string& ruta) const {
     }
 }
 
-void UserData::cargarArchivo(set<int>& datos, const string& ruta) {
+void UserData::cargarArchivo(std::set<int>& datos, const std::string& ruta) {
     ifstream archivo(ruta);
     if (!archivo.is_open()) {
         return;

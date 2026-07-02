@@ -19,7 +19,6 @@ add_executable(streaming_app
         src/data/CSVReader.cpp
         src/data/TagIndex.cpp
         src/search/Buscador.cpp
-        src/ui/Menu.cpp
         src/ui/Paginador.cpp
         src/user/Recommender.cpp
         src/user/UserData.cpp

@@ -17,6 +17,15 @@ public:
     Trie();
     ~Trie();
 
+    // Regla de 5: el Trie posee memoria cruda (nodos con new/delete). Copiar
+    // el objeto haria una copia superficial de los punteros -> doble free al
+    // destruir ambas copias. Como no necesitamos copiarlo (se pasa siempre por
+    // referencia), deshabilitamos copia y movimiento explicitamente.
+    Trie(const Trie&) = delete;
+    Trie& operator=(const Trie&) = delete;
+    Trie(Trie&&) = delete;
+    Trie& operator=(Trie&&) = delete;
+
     void insertarPalabra(string palabra, int idPelicula);
 
     void insertarTexto(string texto, int idPelicula);
