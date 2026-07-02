@@ -15,6 +15,10 @@ using std::string;
 using std::set;
 using std::vector;
 
+// Umbral de relevancia: solo se devuelven películas con puntaje > este valor.
+// Ajustado empíricamente para filtrar palabras muy comunes como "the".
+static constexpr int UMBRAL_RELEVANCIA = 50;
+
 Buscador::Buscador(Trie& t, TagIndex& tx, Repository<Pelicula>& repo)
     : trie(t), tagIndex(tx), repositorio(repo),
       estrategia(std::make_unique<TFIDFScoringStrategy>(repo))  {}
@@ -53,8 +57,13 @@ vector<int> Buscador::buscarOrdenado(const string& consulta) {
     std::sort(conPuntaje.begin(), conPuntaje.end(),
               [](const auto& a, const auto& b) { return a.first > b.first; });
 
+    // Filtrar resultados con puntaje por debajo del umbral de relevancia.
     vector<int> resultado;
     resultado.reserve(conPuntaje.size());
-    for (const auto& par : conPuntaje) resultado.push_back(par.second);
+    for (const auto& par : conPuntaje) {
+        if (par.first > UMBRAL_RELEVANCIA) {
+            resultado.push_back(par.second);
+        }
+    }
     return resultado;
 }

@@ -1,2 +1,4 @@
-// La implementacion completa vive inline en RelevanceScorer.h.
-// Este archivo se mantiene vacio a proposito para no romper el historial.
+#include "RelevanceScorer.h"
+
+// Inicialización de la variable estática (sin estrategia por defecto)
+std::unique_ptr<IScoringStrategy> RelevanceScorer::estrategia = nullptr;

@@ -9,6 +9,9 @@
 #include <memory>
 #include "../data/CSVReader.h"
 #include "../core/Normalizador.h"
+#include "TFIDFScoringStrategy.h" 
+#include "../search/RelevanceScorer.h"
+
 #include <iostream>
 #include <chrono>
 
@@ -43,6 +46,10 @@ MainMenu::MainMenu(Trie& t, TagIndex& tx, Repository<Pelicula>& repo,
         repositorio.add(p);
     }
 
+    // --- Asignar estrategia TF-IDF ---
+    RelevanceScorer::setEstrategia(std::make_unique<TFIDFScoringStrategy>(repositorio));
+    std::cout << "[MainMenu] Estrategia de ranking: TF-IDF Ponderada\n";
+    
     cout << "[MainMenu] Indexando " << vec.size() << " peliculas en el Trie...\n";
     cout.flush();
 
