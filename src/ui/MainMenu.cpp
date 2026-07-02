@@ -5,6 +5,8 @@
 #include "WatchLaterMenu.h"
 #include "RecommendMenu.h"
 #include "LikesMenu.h"
+#include "../search/TFIDFScoringStrategy.h"
+#include <memory>
 #include "../data/CSVReader.h"
 #include "../core/Normalizador.h"
 #include <iostream>
@@ -57,6 +59,9 @@ MainMenu::MainMenu(Trie& t, TagIndex& tx, Repository<Pelicula>& repo,
         }
     }
     cout << "[MainMenu] " << vec.size() << " peliculas cargadas.\n";
+
+   
+    buscador.setEstrategia(std::make_unique<TFIDFScoringStrategy>(repositorio));
 }
 
 // --- NUEVO: Implementación de onDataChanged() ---
