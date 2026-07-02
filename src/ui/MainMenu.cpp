@@ -1,8 +1,10 @@
 #include "MainMenu.h"
 #include "SearchMenu.h"
+#include "TagSearchMenu.h"
 #include "DetailMenu.h"
 #include "WatchLaterMenu.h"
 #include "RecommendMenu.h"
+#include "LikesMenu.h"
 #include "../data/CSVReader.h"
 #include "../core/Normalizador.h"
 #include <iostream>
@@ -121,9 +123,11 @@ void MainMenu::mostrarPantallaInicio() {
     }
 
     cout << "\n------------------------------------------\n";
-    cout << "  [1] Buscar pelicula\n";
-    cout << "  [2] Ver mas tarde\n";
-    cout << "  [3] Ver recomendaciones\n";
+    cout << "  [1] Buscar pelicula (texto)\n";
+    cout << "  [2] Buscar por tag (director/genero/actor)\n";
+    cout << "  [3] Ver mas tarde\n";
+    cout << "  [4] Ver recomendaciones\n";
+    cout << "  [5] Mis likes\n";
     cout << "  [0] Salir\n";
     cout << "------------------------------------------\n";
     cout << "Seleccione una opcion: ";
@@ -134,11 +138,17 @@ void MainMenu::ejecutarOpcion(const std::string& opcion) {
         SearchMenu searchMenu(trie, tagIndex, repositorio, buscador, userData, recommender);
         searchMenu.mostrar();
     } else if (opcion == "2") {
+        TagSearchMenu tagSearchMenu(trie, tagIndex, repositorio, buscador, userData, recommender);
+        tagSearchMenu.mostrar();
+    } else if (opcion == "3") {
         WatchLaterMenu watchLaterMenu(trie, tagIndex, repositorio, buscador, userData, recommender);
         watchLaterMenu.mostrar();
-    } else if (opcion == "3") {
+    } else if (opcion == "4") {
         RecommendMenu recommendMenu(trie, tagIndex, repositorio, buscador, userData, recommender);
         recommendMenu.mostrar();
+    } else if (opcion == "5") {
+        LikesMenu likesMenu(trie, tagIndex, repositorio, buscador, userData, recommender);
+        likesMenu.mostrar();
     }
 }
 

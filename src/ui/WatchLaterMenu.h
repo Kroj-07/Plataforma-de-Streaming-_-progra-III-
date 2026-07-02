@@ -38,13 +38,15 @@ public:
         std::getline(std::cin, opcion);
         if (opcion.empty() || opcion[0] == 'V' || opcion[0] == 'v') return;
 
-        int indice = leerNumero("Numero para ver detalle: ");
-if (indice >= 1 && indice <= (int)ids.size()) {
-    DetailMenu detailMenu(trie, tagIndex, repositorio, buscador, userData, recommender);
-    detailMenu.mostrar(ids[indice - 1]);
-} else if (indice != -1) {
-    std::cout << "Numero fuera de rango.\n";
-}
+        int indice;
+        try { indice = std::stoi(opcion); } catch (...) { return; }
+
+        if (indice >= 1 && indice <= (int)ids.size()) {
+            DetailMenu detailMenu(trie, tagIndex, repositorio, buscador, userData, recommender);
+            detailMenu.mostrar(ids[indice - 1]);
+        } else {
+            std::cout << "Numero fuera de rango.\n";
+        }
     }
 };
 

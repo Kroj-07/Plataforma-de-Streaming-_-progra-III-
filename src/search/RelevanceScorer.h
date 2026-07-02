@@ -1,61 +1,24 @@
-
 #ifndef RELEVANCESCORER_H
 #define RELEVANCESCORER_H
 
-#include "../data/Pelicula.h"
-#include "../core/Repository.h"
 #include <vector>
-#include <set>
 #include <string>
-#include <algorithm>
 #include <sstream>
 
-// Algoritmo de relevancia (Integrante B).
-// Pondera: título > director/casting > sinopsis.  Bonus por recencia.
+// Utilidad de apoyo a la busqueda.
+//
+// NOTA: el calculo de relevancia (ranking) se implementa con el patron
+// Strategy en IScoringStrategy / PesosFijosStrategy. Aqui solo queda la
+// utilidad de tokenizacion que comparten el Buscador y las estrategias.
 class RelevanceScorer {
 public:
-    // Calcula puntaje de una película respecto a una lista de términos.
-    static int calcularPuntaje(const Pelicula& p, const std::vector<std::string>& terminos) {
-        int score = 0;
-        for (const std::string& term : terminos) {
-            if (term.empty()) continue;
-            if (p.titulo.find(term)   != std::string::npos) score += 50;
-            if (p.director.find(term) != std::string::npos) score += 30;
-            if (p.casting.find(term)  != std::string::npos) score += 30;
-
-            size_t pos = p.sinopsis.find(term, 0);
-            while (pos != std::string::npos) {
-                score += 5;
-                pos = p.sinopsis.find(term, pos + term.length());
-            }
-        }
-        score += (p.anio / 100);  // pequeño bonus por recencia
-        return score;
-    }
-
-    // Convierte una consulta libre en lista de términos (split por espacios).
+    // Convierte una consulta libre en lista de terminos (split por espacios).
     static std::vector<std::string> tokenizar(const std::string& consulta) {
         std::vector<std::string> terminos;
         std::istringstream iss(consulta);
         std::string tok;
         while (iss >> tok) terminos.push_back(tok);
         return terminos;
-    }
-
-    // Ordena IDs por relevancia (mayor score primero).  O(n log n).
-    // Busca cada pelicula por su id real en el Repository (O(1) promedio),
-    // en lugar de indexar un vector cuyo orden no coincide con el id.
-    static std::vector<int> ordenarPorRelevancia(
-            const std::set<int>& ids,
-            const Repository<Pelicula>& repo,
-            const std::string& consulta) {
-        auto terminos = tokenizar(consulta);
-        std::vector<int> v(ids.begin(), ids.end());
-        std::sort(v.begin(), v.end(), [&](int a, int b) {
-            return calcularPuntaje(repo.getById(a), terminos) >
-                   calcularPuntaje(repo.getById(b), terminos);
-        });
-        return v;
     }
 };
 

@@ -1,5 +1,5 @@
-#ifndef RECOMMENDMENU_H
-#define RECOMMENDMENU_H
+#ifndef LIKESMENU_H
+#define LIKESMENU_H
 
 #include "MenuBase.h"
 #include "DetailMenu.h"
@@ -7,36 +7,30 @@
 #include <vector>
 #include <string>
 
-class RecommendMenu : public MenuBase {
+// Muestra las peliculas a las que el usuario dio Like, con opcion de abrir
+// el detalle (donde puede quitar el like).
+class LikesMenu : public MenuBase {
 public:
-    RecommendMenu(Trie& t, TagIndex& tx, Repository<Pelicula>& repo,
-                  Buscador& bus, UserData& ud, Recommender& rec)
+    LikesMenu(Trie& t, TagIndex& tx, Repository<Pelicula>& repo,
+              Buscador& bus, UserData& ud, Recommender& rec)
         : MenuBase(t, tx, repo, bus, ud, rec) {}
 
     void mostrar() {
         limpiarPantalla();
         std::cout << "==========================================\n";
-        std::cout << "  RECOMENDACIONES PARA TI\n";
-        std::cout << "  (basado en tus likes)\n";
+        std::cout << "  MIS LIKES\n";
         std::cout << "==========================================\n\n";
 
-        if (userData.getLikes().empty()) {
+        const auto& likes = userData.getLikes();
+        if (likes.empty()) {
             std::cout << "Aun no has dado like a ninguna pelicula.\n";
-            std::cout << "Busca peliculas y dales like.\n";
             pausar();
             return;
         }
 
-        std::vector<Pelicula> todas = repositorio.getAll();
-        auto recs = recommender.generarRecomendaciones(userData.getLikes(), todas, 5);
-        if (recs.empty()) {
-            std::cout << "No hay recomendaciones disponibles.\n";
-            pausar();
-            return;
-        }
-
-        for (size_t i = 0; i < recs.size(); ++i) {
-            mostrarFilaPelicula((int)i + 1, recs[i]);
+        std::vector<int> ids(likes.begin(), likes.end());
+        for (size_t i = 0; i < ids.size(); ++i) {
+            mostrarFilaPelicula((int)i + 1, ids[i]);
         }
 
         std::cout << "------------------------------------------\n";
@@ -49,9 +43,9 @@ public:
         int indice;
         try { indice = std::stoi(opcion); } catch (...) { return; }
 
-        if (indice >= 1 && indice <= (int)recs.size()) {
+        if (indice >= 1 && indice <= (int)ids.size()) {
             DetailMenu detailMenu(trie, tagIndex, repositorio, buscador, userData, recommender);
-            detailMenu.mostrar(recs[indice - 1]);
+            detailMenu.mostrar(ids[indice - 1]);
         } else {
             std::cout << "Numero fuera de rango.\n";
         }

@@ -41,8 +41,8 @@ El programa está organizado en **cuatro capas** con responsabilidades bien defi
 
 | Capa | Componentes | Responsabilidad |
 |------|-------------|-----------------|
-| **1. Interfaz de Usuario** | `MainMenu`, `SearchMenu`, `DetailMenu`, `WatchLaterMenu`, `RecommendMenu`, `Paginador` | Maneja la interacción con el usuario y la navegación. |
-| **2. Lógica de la Aplicación** | `Buscador`, `Recommender`, `RelevanceScorer` | Orquesta las búsquedas, genera recomendaciones y calcula relevancia. |
+| **1. Interfaz de Usuario** | `MainMenu`, `SearchMenu`, `TagSearchMenu`, `DetailMenu`, `WatchLaterMenu`, `RecommendMenu`, `LikesMenu`, `Paginador` | Maneja la interacción con el usuario y la navegación. |
+| **2. Lógica de la Aplicación** | `Buscador`, `Recommender`, `IScoringStrategy`/`PesosFijosStrategy` | Orquesta las búsquedas, genera recomendaciones y calcula relevancia (ranking intercambiable vía Strategy). |
 | **3. Estructuras de Datos** | `Trie`, `TagIndex`, `Normalizador`, `Repository<T>` | Almacena y organiza los datos para acceso eficiente. |
 | **4. Persistencia** | `CSVReader`, `UserData` | Lee el archivo CSV y guarda/ carga los datos del usuario. |
 
@@ -59,20 +59,19 @@ Un **Suffix Trie** es un árbol donde cada nodo representa un carácter. Inserta
 **Ejemplo:** Para la palabra `"batman"`, insertamos los sufijos: "batman", "atman", "tman", "man", "an", "n"
 
 **Visualización:**
+```
 raíz
-|
-b
-|
-a
-|
-t
-/
-m (otros)
-|
-a
-|
-n
-
+ |
+ b
+ |
+ a
+ |
+ t --- m (otros sufijos)
+       |
+       a
+       |
+       n
+```
 
 **Complejidades:**
 | Operación | Complejidad | Explicación |
@@ -118,22 +117,22 @@ Antes de insertar en el Trie, los datos pasan por un **Normalizador** que:
 - Índices en `unordered_map` para **director, género y actor**.
 - Búsqueda **O(1)** promedio, pero solo por **coincidencia exacta** (ej: `"christopher nolan"` ≠ `"nolan"`).
 
-### Algoritmo de Ranking (RelevanceScorer)
+### Algoritmo de Ranking (Strategy: `PesosFijosStrategy`)
 
-Ordena los resultados por relevancia usando **pesos fijos**:
+El ranking se implementa con el **patrón Strategy** (`IScoringStrategy`), de modo que se puede intercambiar el algoritmo sin tocar el `Buscador`. La estrategia por defecto usa **pesos fijos**:
 
-| Campo | Peso | Razón |
-|-------|------|-------|
-| **Título** | 50 | La coincidencia en el título es la más relevante. |
-| **Director / Casting** | 30 | Moderadamente relevante. |
-| **Sinopsis (por aparición)** | 5 | Cada aparición suma poco, pero muchas apariciones suman. |
+| Criterio | Peso | Razón |
+|----------|------|-------|
+| **Frase completa en el título** | +200 | Un match exacto de la consulta en el título es lo más relevante (ej: "iron man" → *Iron Man*). |
+| **Término en el título** | +50 | Coincidencia de una palabra en el título. |
+| **Término en director / casting** | +30 c/u | Moderadamente relevante. |
+| **Término en género** | +10 | Poco relevante. |
+| **Término presente en la sinopsis** | +5 | Se cuenta **presencia** (una vez), no por cada aparición. |
 | **Bonus por año** | `anio / 100` | Las películas más recientes tienen una pequeña ventaja. |
 
-**Fórmula:** 
-Puntaje = (Título × 50) + (Director × 30) + (Casting × 30) + (Sinopsis × 5) + (anio / 100)
+**Decisión de diseño:** la sinopsis se puntúa por *presencia* y no por *cada aparición*. Antes se sumaba por aparición, lo que inflaba películas cuya sinopsis repetía subcadenas comunes (ej: "man" dentro de "many", "woman", "human"), dejándolas por encima de coincidencias exactas de título. El bonus por frase completa garantiza que el match exacto siempre domine.
 
-
-**Limitación:** Los pesos son arbitrarios. En el futuro, planeamos implementar **TF-IDF** para un ranking más preciso.
+**Mejora futura:** implementar una estrategia alternativa **TF-IDF** (basta crear otra clase que implemente `IScoringStrategy`).
 
 ---
 
@@ -211,18 +210,21 @@ Puntaje = (Título × 50) + (Director × 30) + (Casting × 30) + (Sinopsis × 5)
 - **CMake 3.10+**.
 - **Compilador GCC/Clang/MSVC** con soporte C++20.
 
-### Compilación
+### Compilación (con CMake)
 
-git clone https://github.com/Kroj-07
-Plataforma-de-Streaming-_-progra-III-.git
+```bash
+git clone https://github.com/Kroj-07/Plataforma-de-Streaming-_-progra-III-.git
 cd Plataforma-de-Streaming-_-progra-III-
 mkdir build && cd build
 cmake ..
 cmake --build .
+```
 
+### Ejecución
 
-### Ejecucion
+```bash
 ./streaming_app
+```
 
 ### Uso básico
 Al iniciar, se muestra la pantalla de inicio con las listas de "Ver más tarde" y "Recomendaciones".
@@ -239,13 +241,16 @@ En el detalle, puedes:
 
 [Q] Quitar marcas.
 
-Desde el menú principal, puedes acceder a [2] Ver más tarde y [3] Recomendaciones.
+Desde el menú principal puedes acceder a: [1] Buscar por texto, [2] Buscar por tag, [3] Ver más tarde, [4] Recomendaciones y [5] Mis likes.
 
 ## Estructura del proyecto
+```
 Plataforma-de-Streaming-_-progra-III-/
 ├── CMakeLists.txt
 ├── README.md
 ├── main.cpp
+├── bench_carga.cpp            # Benchmark carga secuencial vs. paralela
+├── test_recommender.cpp       # Test del algoritmo de recomendaciones
 ├── data/
 │   ├── processed/peliculas_limpias.csv
 │   └── raw/peliculas.csv
@@ -255,40 +260,42 @@ Plataforma-de-Streaming-_-progra-III-/
 ├── src/
 │   ├── core/
 │   │   ├── Normalizador.h
-│   │   ├── Repository.h
+│   │   ├── Repository.h        # Contenedor genérico (Programación Genérica)
 │   │   ├── Trie.h
 │   │   └── Trie.cpp
 │   ├── data/
 │   │   ├── CSVReader.h
-│   │   ├── CSVReader.cpp
+│   │   ├── CSVReader.cpp       # Carga paralela con std::async
 │   │   ├── Pelicula.h
-│   │   ├── PeliculaFactory.h
+│   │   ├── PeliculaFactory.h   # Patrón Factory
 │   │   ├── TagIndex.h
 │   │   └── TagIndex.cpp
 │   ├── search/
 │   │   ├── Buscador.h
 │   │   ├── Buscador.cpp
-│   │   ├── RelevanceScorer.h
-│   │   └── RelevanceScorer.cpp
+│   │   ├── RelevanceScorer.h   # Utilidad de tokenización
+│   │   ├── IScoringStrategy.h  # Patrón Strategy (interfaz)
+│   │   └── PesosFijosStrategy.h# Patrón Strategy (implementación)
 │   ├── ui/
-│   │   ├── IObserver.h
+│   │   ├── IObserver.h         # Patrón Observer (interfaz)
 │   │   ├── MenuBase.h
-│   │   ├── MainMenu.h
-│   │   ├── MainMenu.cpp
-│   │   ├── SearchMenu.h
+│   │   ├── MainMenu.h / .cpp   # Observer de UserData
+│   │   ├── SearchMenu.h        # Búsqueda por texto
+│   │   ├── TagSearchMenu.h     # Búsqueda por tag
 │   │   ├── DetailMenu.h
 │   │   ├── WatchLaterMenu.h
 │   │   ├── RecommendMenu.h
+│   │   ├── LikesMenu.h         # Ver mis likes
 │   │   ├── Paginador.h
 │   │   └── Paginador.cpp
 │   └── user/
-│       ├── UserData.h
-│       ├── UserData.cpp
+│       ├── UserData.h / .cpp   # Patrón Singleton + Observer (Subject)
 │       ├── Recommender.h
 │       └── Recommender.cpp
-└── user_data/
+└── user_data/                  # Generado en runtime
     ├── likes.txt
     └── ver_mas_tarde.txt
+```
 
 ## Referencias Bibliográficas
 Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C. (2009). Introduction to Algorithms (3rd ed.). MIT Press. [Libro de referencia para estructuras de datos y complejidad temporal].
