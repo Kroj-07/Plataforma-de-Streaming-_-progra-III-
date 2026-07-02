@@ -21,3 +21,9 @@ build/
 cmake-build-debug/
 cmake-build-release/
 *.exe
+
+# IDE (CLion / IntelliJ)
+.idea/
+
+# Datos generados en runtime por el programa (likes / ver mas tarde)
+user_data/
